@@ -1,0 +1,30 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.juliobrunno.figurinhas'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.juliobrunno.figurinhas'
+        minSdk 24
+        targetSdk 34
+        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+        versionName "1.0." + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
+    }
+    signingConfigs {
+        release {
+            storeFile file('figurinhas.jks')
+            storePassword 'figurinhas123'
+            keyAlias 'figurinhas'
+            keyPassword 'figurinhas123'
+        }
+    }
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.release }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    sourceSets { main { assets.srcDirs = ['src/main/assets', '../web-assets'] } }
+    aaptOptions { noCompress 'webp' }
+}
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'androidx.core:core:1.13.1'
+}

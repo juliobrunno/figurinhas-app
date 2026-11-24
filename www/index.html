@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fábrica de Figurinhas</title>
+<meta name="theme-color" content="#1d1538">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: brincalhão, rápido, feito para o polegar
+   IDEA: uma cartela de adesivos — cada coisa criada parece um adesivo com borda branca
+   PICTURE: a própria prévia da figurinha, grande, sobre o xadrez de transparência
+   COLOUR/TYPE: tinta roxa-noite, amarelo-adesivo, rosa de destaque; Baloo 2 + Nunito
+   LAYOUT: uma coluna, prévia no topo, controles abaixo, abas fixas embaixo */
+:root{color-scheme:light dark;
+--bg:light-dark(#f7f3ff,#140f29);--card:light-dark(#ffffff,#211a40);--ink:light-dark(#1d1538,#f3efff);
+--mute:light-dark(#6b6388,#a9a1c9);--line:light-dark(#e4ddf5,#342a5c);--yel:#ffd23f;--pink:#ff4f8b;--deep:#1d1538}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Nunito,system-ui,sans-serif;overflow-x:clip;padding-bottom:calc(86px + env(safe-area-inset-bottom))}
+header{background:var(--deep);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;gap:10px}
+header h1{font:800 26px/1.05 'Baloo 2',sans-serif;margin:0;flex:1}
+header .dot{width:34px;height:34px;border-radius:10px;background:var(--yel);transform:rotate(-8deg);box-shadow:3px 3px 0 var(--pink)}
+main{max-width:620px;margin:0 auto;padding:16px}
+section{display:none}section.on{display:block}
+h2{font:800 22px/1.1 'Baloo 2',sans-serif;margin:4px 0 12px}
+.stage{position:relative;aspect-ratio:1;border-radius:22px;overflow:hidden;border:2px solid var(--line);
+background:repeating-conic-gradient(light-dark(#ece6fa,#2a2250) 0 25%,transparent 0 50%) 0 0/28px 28px,var(--card);touch-action:none}
+.stage canvas,.stage video,.stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--mute);font-weight:600}
+.empty b{display:block;font:800 20px 'Baloo 2';color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-top:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row>*{flex:1 1 140px}
+label{font-weight:800;font-size:14px;display:block;margin:10px 0 4px}
+input[type=text],input[type=search],select{width:100%;font:16px Nunito,system-ui,sans-serif;padding:11px 12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--pink);height:32px}
+input[type=color]{width:52px;height:44px;border:0;background:none;padding:0;flex:0 0 52px}
+button,.btn{font:800 16px Nunito,system-ui,sans-serif;min-height:46px;padding:10px 16px;border-radius:14px;border:2px solid var(--deep);background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+:root:not([data-theme=light]) button{border-color:light-dark(var(--deep),#6e5fb0)}
+button.pri{background:var(--yel);color:var(--deep);border-color:var(--deep);box-shadow:3px 3px 0 var(--deep)}
+button.pink{background:var(--pink);color:#fff;border-color:var(--deep)}
+button:active{transform:translate(2px,2px);box-shadow:none}
+button:disabled{opacity:.5}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--pink);outline-offset:2px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chips button{flex:1 1 auto;min-height:42px;font-size:14px;padding:6px 10px}
+.chips button.sel{background:var(--deep);color:#fff}
+.file{position:relative;overflow:hidden}.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.big{width:100%;margin-top:12px}
+.hint{color:var(--mute);font-size:14px;margin:8px 0 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;margin-top:12px}
+.tile{position:relative;aspect-ratio:1;border-radius:16px;overflow:hidden;border:2px solid var(--line);padding:0;min-height:0;
+background:repeating-conic-gradient(light-dark(#ece6fa,#2a2250) 0 25%,transparent 0 50%) 0 0/18px 18px,var(--card)}
+.tile img{width:100%;height:100%;object-fit:contain;display:block}
+.tile .tag{position:absolute;left:6px;bottom:6px;background:var(--deep);color:#fff;font-size:11px;font-weight:800;padding:1px 7px;border-radius:8px}
+.tile.picked{border-color:var(--pink);box-shadow:0 0 0 3px var(--pink) inset}
+.tile.picked::after{content:'✓';position:absolute;top:6px;right:6px;background:var(--pink);color:#fff;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-weight:800}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--deep);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav button{background:none;border:0;color:#cfc6f2;flex-direction:column;gap:2px;font-size:12px;min-height:60px;box-shadow:none}
+nav button svg{width:26px;height:26px}
+nav button.on{color:var(--yel)}
+.bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:10px;display:none}
+.bar i{display:block;height:100%;width:0;background:var(--pink);transition:width .2s}
+.sheet{position:fixed;inset:0;background:#0009;display:none;align-items:flex-end;justify-content:center;z-index:9}
+.sheet.on{display:flex}
+.sheet .in{background:var(--card);width:100%;max-width:620px;border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.sheet .prev{width:min(70vw,300px);aspect-ratio:1;margin:0 auto 12px;border-radius:18px;background:repeating-conic-gradient(light-dark(#ece6fa,#2a2250) 0 25%,transparent 0 50%) 0 0/20px 20px}
+.sheet .prev img{width:100%;height:100%;object-fit:contain}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:10px}.acts .full{grid-column:1/-1}
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--deep);color:#fff;padding:10px 16px;border-radius:14px;font-weight:700;display:none;z-index:20;max-width:90vw;text-align:center;border:2px solid var(--yel)}
+.packbar{position:sticky;top:0;z-index:3;background:var(--pink);color:#fff;border-radius:16px;padding:12px;margin-top:12px;display:none}
+.packbar.on{display:block}
+a{color:var(--pink);font-weight:700}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header><div class="dot" aria-hidden="true"></div><h1>Fábrica de Figurinhas</h1></header>
+<main>
+
+<section id="t-criar" class="on">
+  <h2>Foto vira figurinha</h2>
+  <div class="stage" id="stage">
+    <canvas id="cv" width="512" height="512"></canvas>
+    <div class="empty" id="emptyS"><div><b>Escolha uma foto</b>Arraste com o dedo para mover, use dois dedos para aumentar</div></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <span class="btn file pri"><input type="file" accept="image/*" id="fPhoto" aria-label="Escolher foto">Escolher foto</span>
+    <button id="bBg" disabled>Tirar fundo</button>
+  </div>
+  <div class="bar" id="bgBar"><i></i></div>
+  <div class="card">
+    <label for="rZoom">Tamanho</label><input type="range" id="rZoom" min="10" max="400" value="100">
+    <label for="rRot">Girar</label><input type="range" id="rRot" min="-180" max="180" value="0">
+    <label>Formato</label>
+    <div class="chips" id="cShape"><button data-v="livre" class="sel">Livre</button><button data-v="circulo">Círculo</button><button data-v="arred">Arredondado</button></div>
+    <label>Borda branca</label>
+    <div class="chips" id="cOut"><button data-v="0">Sem</button><button data-v="8" class="sel">Fina</button><button data-v="16">Grossa</button></div>
+  </div>
+  <div class="card">
+    <label for="tTxt">Texto (opcional)</label>
+    <div class="row"><input type="text" id="tTxt" placeholder="Ex.: Bom dia!" maxlength="40" style="flex:1 1 200px"><input type="color" id="tCol" value="#ffffff" aria-label="Cor do texto"></div>
+    <label>Posição do texto</label>
+    <div class="chips" id="cPos"><button data-v="top">Em cima</button><button data-v="mid">Meio</button><button data-v="bot" class="sel">Embaixo</button></div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button id="bSaveS" disabled>Salvar na galeria</button>
+    <button id="bShareS" class="pri" disabled>Enviar no WhatsApp</button>
+  </div>
+</section>
+
+<section id="t-gif">
+  <h2>Vídeo vira GIF</h2>
+  <div class="stage" style="aspect-ratio:16/11">
+    <video id="vid" muted playsinline preload="auto"></video>
+    <img id="gifOut" alt="" style="display:none">
+    <div class="empty" id="emptyV"><div><b>Escolha um vídeo</b>Depois escolha o trecho que vira GIF</div></div>
+  </div>
+  <span class="btn file pri big"><input type="file" accept="video/*" id="fVid" aria-label="Escolher vídeo">Escolher vídeo</span>
+  <div class="card">
+    <label for="rStart">Começa em <span id="lStart">0,0</span> s</label><input type="range" id="rStart" min="0" max="0" step="0.1" value="0">
+    <label for="rLen">Duração: <span id="lLen">3</span> s</label><input type="range" id="rLen" min="1" max="8" step="0.5" value="3">
+    <label>Formato</label>
+    <div class="chips" id="cFmt"><button data-v="orig" class="sel">Original</button><button data-v="sq">Quadrado</button></div>
+    <label>Qualidade</label>
+    <div class="chips" id="cQ"><button data-v="240">Leve</button><button data-v="320" class="sel">Normal</button><button data-v="480">Alta</button></div>
+    <label for="gTxt">Texto (opcional)</label><input type="text" id="gTxt" placeholder="Ex.: kkkkk" maxlength="40">
+  </div>
+  <button id="bMake" class="pink big" disabled>Gerar GIF</button>
+  <div class="bar" id="gifBar"><i></i></div>
+  <div class="row" style="margin-top:12px">
+    <button id="bSaveG" disabled>Salvar na galeria</button>
+    <button id="bShareG" class="pri" disabled>Enviar no WhatsApp</button>
+  </div>
+</section>
+
+<section id="t-busca">
+  <h2>Buscar GIFs prontos</h2>
+  <div class="chips" id="cKind"><button data-v="gifs" class="sel">GIFs</button><button data-v="stickers">Figurinhas</button></div>
+  <form id="fSearch" class="row" style="margin-top:10px">
+    <input type="search" id="q" placeholder="Ex.: bom dia, gato, risada" style="flex:1 1 200px" enterkeyhint="search">
+    <button class="pri" style="flex:0 0 auto">Buscar</button>
+  </form>
+  <div id="keyBox" class="card" style="display:none">
+    <b>Falta só uma chave gratuita do Giphy</b>
+    <p class="hint" style="margin-top:4px">1. Abra <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">developers.giphy.com</a> e crie uma conta grátis.<br>2. Toque em <i>Create an API Key</i>, escolha <i>API</i> e dê um nome qualquer.<br>3. Copie a chave e cole aqui:</p>
+    <div class="row" style="margin-top:8px"><input type="text" id="kIn" placeholder="Cole a chave aqui" autocomplete="off"><button id="kSave" style="flex:0 0 auto">Salvar</button></div>
+  </div>
+  <div class="grid" id="res"></div>
+  <p class="hint" id="resHint">Toque num resultado para enviar ou salvar. Resultados via GIPHY.</p>
+  <p class="hint"><a href="#" id="kChange">Trocar chave do Giphy</a></p>
+</section>
+
+<section id="t-gal">
+  <h2>Minha galeria</h2>
+  <button id="bPack" class="pri big">Montar pacote para o WhatsApp</button>
+  <div class="packbar" id="packBar">
+    <b id="packCount">0 escolhidas</b> — toque em 3 a 30 figurinhas (só as paradas, não GIFs).
+    <input type="text" id="packName" placeholder="Nome do pacote" maxlength="60" style="margin-top:8px">
+    <div class="row" style="margin-top:8px"><button id="packCancel">Cancelar</button><button id="packGo" class="pri">Adicionar ao WhatsApp</button></div>
+  </div>
+  <div class="grid" id="gal"></div>
+  <p class="hint" id="galEmpty">Nada aqui ainda. Crie uma figurinha ou um GIF e toque em "Salvar na galeria".</p>
+</section>
+</main>
+
+<nav>
+  <button data-t="criar" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v4h4"/><circle cx="10" cy="11" r="2"/><path d="M6 18l4-4 3 3 2-2 3 3"/></svg>Criar</button>
+  <button data-t="gif"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></svg>GIF</button>
+  <button data-t="busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Buscar</button>
+  <button data-t="gal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>Galeria</button>
+</nav>
+
+<div class="sheet" id="sheet"><div class="in">
+  <div class="prev"><img id="shImg" alt="Prévia"></div>
+  <div class="acts" id="shActs"></div>
+</div></div>
+<div id="toast" role="status"></div>
+
+<script type="module">
+import {GIFEncoder,quantize,applyPalette} from 'https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js';
+{
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const IS_APP=!!(window.Android&&window.Android.addPack);
+const toast=(m,ms=2800)=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',ms)};
+const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+/* ---------- abas ---------- */
+const go=t=>{$$('section').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));ls.set('aba',t);if(t==='gal')renderGal();scrollTo(0,0)};
+$$('nav button').forEach(b=>b.onclick=()=>go(b.dataset.t));
+const chips=(id,fn)=>$$(id+' button').forEach(b=>b.onclick=e=>{e.preventDefault();$$(id+' button').forEach(x=>x.classList.toggle('sel',x===b));fn(b.dataset.v)});
+
+/* ---------- armazenamento (IndexedDB) ---------- */
+let mem=[];
+const dbp=new Promise(res=>{try{const r=indexedDB.open('figurinhas',1);r.onupgradeneeded=()=>r.result.createObjectStore('itens',{keyPath:'id'});r.onsuccess=()=>res(r.result);r.onerror=()=>res(null)}catch(e){res(null)}});
+const tx=async(mode,fn)=>{const db=await dbp;if(!db)return null;return new Promise((res,rej)=>{const t=db.transaction('itens',mode);const r=fn(t.objectStore('itens'));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})};
+const store={
+  async all(){try{const r=await tx('readonly',s=>s.getAll());if(r)return r.sort((a,b)=>b.id-a.id)}catch(e){}return mem.slice().sort((a,b)=>b.id-a.id)},
+  async add(it){try{if(await dbp){await tx('readwrite',s=>s.put(it));return}}catch(e){}mem.push(it)},
+  async del(id){try{if(await dbp){await tx('readwrite',s=>s.delete(id));return}}catch(e){}mem=mem.filter(x=>x.id!==id)}
+};
+
+/* ---------- utilidades ---------- */
+const b64=blob=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(String(f.result).split(',')[1]);f.readAsDataURL(blob)});
+const ext=t=>t.includes('webp')?'webp':t.includes('gif')?'gif':t.includes('png')?'png':'jpg';
+async function download(blob,name){if(window.Android&&window.Android.saveFile){window.Android.saveFile(await b64(blob),blob.type,name);return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+async function share(blob,base='figurinha'){
+  const name=base+'-'+Date.now()+'.'+ext(blob.type);
+  if(window.Android&&window.Android.shareFile){window.Android.shareFile(await b64(blob),blob.type,name);return}
+  const file=new File([blob],name,{type:blob.type});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file]});return}catch(e){if(e.name==='AbortError')return}}
+  download(blob,name);toast('Arquivo baixado! No WhatsApp, toque no clipe e escolha da Galeria.',4500);
+}
+const canvasBlob=(c,type,q)=>new Promise(r=>c.toBlob(r,type,q));
+async function toSticker(c){ // WhatsApp: 512x512 WebP, até 100 KB
+  let last=null;
+  for(const q of [0.92,0.82,0.72,0.6,0.5,0.4,0.3]){const b=await canvasBlob(c,'image/webp',q);if(!b||b.type!=='image/webp')return canvasBlob(c,'image/png');last=b;if(b.size<=100*1024)return b}
+  return last;
+}
+function fitText(ctx,txt,maxW,size){ctx.font=`800 ${size}px 'Baloo 2',sans-serif`;while(ctx.measureText(txt).width>maxW&&size>14){size-=2;ctx.font=`800 ${size}px 'Baloo 2',sans-serif`}return size}
+function drawCaption(ctx,txt,W,H,pos,color){
+  if(!txt)return;const size=fitText(ctx,txt,W*0.9,Math.round(W*0.14));
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+  const y=pos==='top'?size*0.8:pos==='mid'?H/2:H-size*0.8;
+  ctx.lineWidth=Math.max(3,size*0.18);ctx.strokeStyle='#000';ctx.strokeText(txt,W/2,y);ctx.fillStyle=color;ctx.fillText(txt,W/2,y);
+}
+
+/* ---------- editor de figurinha ---------- */
+const cv=$('#cv'),cx=cv.getContext('2d');
+const S={img:null,file:null,scale:1,base:1,ox:0,oy:0,rot:0,shape:'livre',out:8,pos:'bot'};
+const layer=document.createElement('canvas');layer.width=layer.height=512;const lx=layer.getContext('2d');
+const sil=document.createElement('canvas');sil.width=sil.height=512;const sx=sil.getContext('2d');
+function draw(){
+  cx.clearRect(0,0,512,512);if(!S.img)return;
+  lx.clearRect(0,0,512,512);lx.save();
+  const pad=S.out?S.out+2:0;
+  if(S.shape!=='livre'){lx.beginPath();if(S.shape==='circulo')lx.arc(256,256,256-pad,0,Math.PI*2);else lx.roundRect(pad,pad,512-pad*2,512-pad*2,90);lx.clip()}
+  lx.translate(256+S.ox,256+S.oy);lx.rotate(S.rot*Math.PI/180);const k=S.base*S.scale;lx.scale(k,k);
+  lx.drawImage(S.img,-S.img.width/2,-S.img.height/2);lx.restore();
+  if(S.out){sx.clearRect(0,0,512,512);sx.globalCompositeOperation='source-over';sx.drawImage(layer,0,0);sx.globalCompositeOperation='source-in';sx.fillStyle='#fff';sx.fillRect(0,0,512,512);
+    for(let a=0;a<24;a++){const t=a/24*Math.PI*2;cx.drawImage(sil,Math.cos(t)*S.out,Math.sin(t)*S.out)}}
+  cx.drawImage(layer,0,0);
+  drawCaption(cx,$('#tTxt').value.trim(),512,512,S.pos,$('#tCol').value);
+}
+async function loadImage(blob){
+  const url=URL.createObjectURL(blob);const im=new Image();im.src=url;await im.decode();
+  S.img=im;S.file=blob;S.base=512/Math.max(im.width,im.height)*0.9;S.scale=1;S.ox=S.oy=0;S.rot=0;
+  $('#rZoom').value=100;$('#rRot').value=0;$('#emptyS').style.display='none';
+  ['#bBg','#bSaveS','#bShareS'].forEach(i=>$(i).disabled=false);draw();
+}
+$('#fPhoto').onchange=e=>{const f=e.target.files[0];if(f)loadImage(f).catch(()=>toast('Não consegui abrir essa imagem.'));e.target.value=''};
+$('#rZoom').oninput=e=>{S.scale=e.target.value/100;draw()};
+$('#rRot').oninput=e=>{S.rot=+e.target.value;draw()};
+chips('#cShape',v=>{S.shape=v;draw()});chips('#cOut',v=>{S.out=+v;draw()});chips('#cPos',v=>{S.pos=v;draw()});
+$('#tTxt').oninput=draw;$('#tCol').oninput=draw;
+// mover e pinçar
+const pts=new Map();let pinch=null;
+const stage=$('#stage');
+stage.addEventListener('pointerdown',e=>{if(!S.img)return;stage.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY})});
+stage.addEventListener('pointermove',e=>{
+  if(!pts.has(e.pointerId))return;const p=pts.get(e.pointerId);const r=512/stage.clientWidth;
+  if(pts.size===1){S.ox+=(e.clientX-p.x)*r;S.oy+=(e.clientY-p.y)*r}
+  pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pts.size===2){const [a,b]=[...pts.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinch){S.scale=Math.min(4,Math.max(.1,S.scale*d/pinch));$('#rZoom').value=Math.round(S.scale*100)}pinch=d}
+  draw();
+});
+const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null};
+stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
+stage.addEventListener('wheel',e=>{if(!S.img)return;e.preventDefault();S.scale=Math.min(4,Math.max(.1,S.scale*(e.deltaY<0?1.08:0.92)));$('#rZoom').value=Math.round(S.scale*100);draw()},{passive:false});
+// tirar fundo (IA no próprio aparelho)
+$('#bBg').onclick=async()=>{
+  const btn=$('#bBg'),bar=$('#bgBar');btn.disabled=true;btn.textContent='Tirando fundo…';bar.style.display='block';
+  try{
+    const m=await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm');
+    const out=await m.removeBackground(S.file,{progress:(k,c,t)=>{if(t)bar.firstChild.style.width=Math.round(c/t*100)+'%'}});
+    const keep={scale:S.scale,ox:S.ox,oy:S.oy,rot:S.rot};await loadImage(out);Object.assign(S,keep);draw();toast('Fundo removido!');
+  }catch(e){console.error(e);toast('Não deu para tirar o fundo agora. Confira a internet e tente de novo.',4000)}
+  btn.disabled=false;btn.textContent='Tirar fundo';bar.style.display='none';bar.firstChild.style.width='0';
+};
+$('#bSaveS').onclick=async()=>{const b=await toSticker(cv);await store.add({id:Date.now(),kind:'fig',blob:b});toast('Salva na galeria!')};
+$('#bShareS').onclick=async()=>share(await toSticker(cv),'figurinha');
+
+/* ---------- vídeo para GIF ---------- */
+const vid=$('#vid');let gifBlob=null;const G={fmt:'orig',w:320};
+chips('#cFmt',v=>G.fmt=v);chips('#cQ',v=>G.w=+v);
+const fmt=n=>n.toFixed(1).replace('.',',');
+$('#fVid').onchange=e=>{const f=e.target.files[0];if(!f)return;vid.src=URL.createObjectURL(f);vid.style.display='block';$('#gifOut').style.display='none';$('#emptyV').style.display='none';e.target.value=''};
+vid.onloadedmetadata=()=>{const d=vid.duration||0;$('#rStart').max=Math.max(0,d-0.5).toFixed(1);$('#rStart').value=0;$('#lStart').textContent='0,0';$('#rLen').max=Math.min(8,Math.max(1,d)).toString();$('#bMake').disabled=false};
+$('#rStart').oninput=e=>{$('#lStart').textContent=fmt(+e.target.value);vid.currentTime=+e.target.value};
+$('#rLen').oninput=e=>$('#lLen').textContent=fmt(+e.target.value).replace(',0','');
+const seek=t=>new Promise(r=>{const h=()=>{vid.removeEventListener('seeked',h);r()};vid.addEventListener('seeked',h);vid.currentTime=t;setTimeout(h,1500)});
+$('#bMake').onclick=async()=>{
+  const btn=$('#bMake'),bar=$('#gifBar');btn.disabled=true;bar.style.display='block';vid.pause();
+  const fps=10,start=+$('#rStart').value,len=Math.min(+$('#rLen').value,vid.duration-start);
+  const vw=vid.videoWidth,vh=vid.videoHeight;let W,H,sx=0,sy=0,sw=vw,sh=vh;
+  if(G.fmt==='sq'){const m=Math.min(vw,vh);sx=(vw-m)/2;sy=(vh-m)/2;sw=sh=m;W=H=G.w}else{const k=G.w/Math.max(vw,vh);W=Math.round(vw*k);H=Math.round(vh*k)}
+  const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d',{willReadFrequently:true});
+  const enc=GIFEncoder();const n=Math.max(1,Math.round(len*fps));const txt=$('#gTxt').value.trim();
+  try{
+    for(let i=0;i<n;i++){
+      await seek(start+i/fps);g.drawImage(vid,sx,sy,sw,sh,0,0,W,H);drawCaption(g,txt,W,H,'bot','#ffffff');
+      const data=g.getImageData(0,0,W,H).data;const pal=quantize(data,256);enc.writeFrame(applyPalette(data,pal),W,H,{palette:pal,delay:1000/fps});
+      bar.firstChild.style.width=Math.round((i+1)/n*100)+'%';btn.textContent=`Gerando… ${Math.round((i+1)/n*100)}%`;
+      await new Promise(r=>setTimeout(r,0));
+    }
+    enc.finish();gifBlob=new Blob([enc.bytes()],{type:'image/gif'});
+    const o=$('#gifOut');o.src=URL.createObjectURL(gifBlob);o.style.display='block';vid.style.display='none';
+    $('#bSaveG').disabled=$('#bShareG').disabled=false;toast(`GIF pronto! (${Math.round(gifBlob.size/1024)} KB)`);
+  }catch(e){console.error(e);toast('Algo deu errado ao gerar o GIF. Tente um trecho menor.')}
+  btn.disabled=false;btn.textContent='Gerar GIF de novo';bar.style.display='none';bar.firstChild.style.width='0';
+};
+$('#gifOut').onclick=()=>{$('#gifOut').style.display='none';vid.style.display='block'};
+$('#bSaveG').onclick=async()=>{await store.add({id:Date.now(),kind:'gif',blob:gifBlob});toast('GIF salvo na galeria!')};
+$('#bShareG').onclick=()=>share(gifBlob,'gif');
+
+/* ---------- busca no Giphy ---------- */
+let kind='gifs';chips('#cKind',v=>{kind=v;if($('#q').value.trim())search()});
+const key=()=>ls.get('giphyKey')||'';
+$('#kSave').onclick=e=>{e.preventDefault();const k=$('#kIn').value.trim();if(!k)return;ls.set('giphyKey',k);$('#keyBox').style.display='none';toast('Chave salva!');if($('#q').value.trim())search()};
+$('#kChange').onclick=e=>{e.preventDefault();$('#kIn').value=key();$('#keyBox').style.display='block'};
+$('#fSearch').onsubmit=e=>{e.preventDefault();search()};
+async function search(){
+  const q=$('#q').value.trim();if(!q)return;if(!key()){$('#keyBox').style.display='block';return}
+  const res=$('#res');res.textContent='';$('#resHint').textContent='Buscando…';
+  try{
+    const r=await fetch(`https://api.giphy.com/v1/${kind}/search?api_key=${encodeURIComponent(key())}&q=${encodeURIComponent(q)}&limit=30&lang=pt&rating=pg-13`);
+    if(r.status===401||r.status===403){$('#keyBox').style.display='block';$('#resHint').textContent='A chave do Giphy não foi aceita. Confira e cole de novo.';return}
+    const j=await r.json();const list=j.data||[];
+    if(!list.length){$('#resHint').textContent='Nada encontrado. Tente outra palavra.';return}
+    list.forEach(d=>{const im=d.images||{};const thumb=(im.fixed_width_downsampled||im.fixed_width||{}).url;const full=(im.downsized||im.original||{}).url;if(!thumb||!full)return;
+      const b=document.createElement('button');b.className='tile';const i=document.createElement('img');i.loading='lazy';i.alt=d.title||'GIF';i.src=thumb;b.appendChild(i);
+      b.onclick=async()=>{toast('Carregando…',1500);try{const blob=await (await fetch(full)).blob();openSheet({kind:'gif',blob},false)}catch(e){toast('Não consegui baixar esse GIF.')}};res.appendChild(b)});
+    $('#resHint').textContent='Toque num resultado para enviar ou salvar. Resultados via GIPHY.';
+  }catch(e){$('#resHint').textContent='Sem conexão com o Giphy. Confira a internet.'}
+}
+
+/* ---------- galeria e pacote ---------- */
+let picking=false,picked=new Set(),urls=[];
+async function renderGal(){
+  urls.forEach(u=>URL.revokeObjectURL(u));urls=[];
+  const items=await store.all();const gal=$('#gal');gal.textContent='';$('#galEmpty').style.display=items.length?'none':'block';
+  items.forEach(it=>{const b=document.createElement('button');b.className='tile'+(picked.has(it.id)?' picked':'');const i=document.createElement('img');const u=URL.createObjectURL(it.blob);urls.push(u);i.src=u;i.alt=it.kind==='gif'?'GIF':'Figurinha';b.appendChild(i);
+    if(it.kind==='gif'){const t=document.createElement('span');t.className='tag';t.textContent='GIF';b.appendChild(t)}
+    b.onclick=()=>{if(!picking)return openSheet(it,true);if(it.kind==='gif')return toast('GIF não entra no pacote. Escolha figurinhas paradas.');
+      picked.has(it.id)?picked.delete(it.id):picked.size<30&&picked.add(it.id);b.classList.toggle('picked',picked.has(it.id));$('#packCount').textContent=picked.size+' escolhida'+(picked.size===1?'':'s')};
+    gal.appendChild(b)});
+}
+$('#bPack').onclick=()=>{
+  if(!IS_APP){openInfo();return}
+  picking=true;picked.clear();$('#packBar').classList.add('on');$('#bPack').style.display='none';$('#packCount').textContent='0 escolhidas';renderGal();
+};
+$('#packCancel').onclick=()=>{picking=false;picked.clear();$('#packBar').classList.remove('on');$('#bPack').style.display='';renderGal()};
+async function toSquare(blob,size,type){const im=new Image();im.src=URL.createObjectURL(blob);await im.decode();const c=document.createElement('canvas');c.width=c.height=size;const g=c.getContext('2d');const k=Math.min(size/im.width,size/im.height);const w=im.width*k,h=im.height*k;g.drawImage(im,(size-w)/2,(size-h)/2,w,h);return type==='image/png'?canvasBlob(c,'image/png'):toSticker(c)}
+$('#packGo').onclick=async()=>{
+  if(picked.size<3)return toast('Escolha pelo menos 3 figurinhas.');
+  const name=$('#packName').value.trim()||'Minhas figurinhas';const items=(await store.all()).filter(i=>picked.has(i.id));
+  toast('Preparando pacote…',6000);
+  const stickers=[];for(const it of items){const b=it.blob.type==='image/webp'?it.blob:await toSquare(it.blob,512,'image/webp');stickers.push(await b64(b))}
+  const tray=await b64(await toSquare(items[0].blob,96,'image/png'));
+  window.Android.addPack(JSON.stringify({name,publisher:'Fábrica de Figurinhas',tray,stickers}));
+};
+window.onPackResult=(ok,msg)=>{toast(msg||(ok?'Pacote enviado ao WhatsApp!':'O WhatsApp não aceitou o pacote.'),4500);if(ok)$('#packCancel').click()};
+
+/* ---------- folha de ações ---------- */
+const sheet=$('#sheet');sheet.onclick=e=>{if(e.target===sheet)closeSheet()};
+function closeSheet(){sheet.classList.remove('on')}
+function act(label,cls,fn){const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=fn;$('#shActs').appendChild(b);return b}
+function openSheet(it,saved){
+  $('#shImg').src=URL.createObjectURL(it.blob);$('#shImg').style.display='';$('#shActs').textContent='';
+  act('Enviar no WhatsApp','pri full',()=>share(it.blob,it.kind==='gif'?'gif':'figurinha'));
+  if(!saved)act('Salvar na galeria','',async()=>{await store.add({id:Date.now(),kind:it.kind,blob:it.blob});toast('Salvo na galeria!');closeSheet()});
+  act('Baixar','',()=>download(it.blob,'figurinha-'+Date.now()+'.'+ext(it.blob.type)));
+  act('Virar figurinha','',async()=>{closeSheet();go('criar');await loadImage(it.blob)});
+  if(saved)act('Apagar','',async()=>{await store.del(it.id);closeSheet();renderGal();toast('Apagado.')});
+  act('Fechar','full',closeSheet);sheet.classList.add('on');
+}
+function openInfo(){
+  $('#shImg').style.display='none';$('#shActs').textContent='';
+  const p=document.createElement('p');p.className='full';p.style.margin='0';
+  p.textContent='Para criar um pacote que aparece direto na aba de figurinhas do WhatsApp, use o app Android da Fábrica de Figurinhas. Aqui no navegador, você pode enviar cada figurinha ou GIF pelo botão "Enviar no WhatsApp".';
+  $('#shActs').appendChild(p);
+  const a=document.createElement('a');a.className='btn pri full';a.href='https://github.com/juliobrunno/figurinhas-app/releases/latest';a.target='_blank';a.rel='noopener';a.textContent='Baixar app Android';$('#shActs').appendChild(a);
+  act('Fechar','full',closeSheet);sheet.classList.add('on');
+}
+
+/* ---------- início ---------- */
+if(IS_APP)document.documentElement.classList.add('app');
+const start=ls.get('aba');if(start&&$('#t-'+start))go(start);
+if('serviceWorker' in navigator&&location.protocol==='https:'&&!IS_APP)navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+name: Gerar app
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - name: Copiar app web para dentro do Android
+        run: mkdir -p web-assets && cp -r www web-assets/www
+      - name: Gerar APK
+        run: gradle :app:assembleRelease --no-daemon
+      - name: Renomear
+        run: cp app/build/outputs/apk/release/app-release.apk Figurinhas.apk
+      - name: Publicar para download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Figurinhas 1.0.${{ github.run_number }}
+          body: Baixe o arquivo Figurinhas.apk abaixo e abra no celular Android para instalar.
+          files: Figurinhas.apk
+          make_latest: true
+  site:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: www }
+      - id: d
+        uses: actions/deploy-pages@v4

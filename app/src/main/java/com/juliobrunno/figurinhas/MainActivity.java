@@ -212,6 +212,7 @@ public class MainActivity extends Activity {
                 info.put("name", j.optString("name", "Minhas figurinhas"));
                 info.put("publisher", j.optString("publisher", "Fábrica de Figurinhas"));
                 info.put("count", st.length());
+                info.put("animated", j.optBoolean("animated", false));
                 try (FileOutputStream o = new FileOutputStream(new File(dir, "info.json"))) {
                     o.write(info.toString().getBytes("UTF-8"));
                 }

@@ -48,7 +48,7 @@ public class StickerProvider extends ContentProvider {
         JSONObject i = info(dir);
         if (i == null) return;
         c.addRow(new Object[]{dir.getName(), i.optString("name"), i.optString("publisher"), "tray.png",
-                "", "", "", "", "", "", "1", 0, 0});
+                "", "", "", "", "", "", "1", 0, i.optBoolean("animated", false) ? 1 : 0});
     }
 
     @Override

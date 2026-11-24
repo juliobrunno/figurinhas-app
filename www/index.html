@@ -158,11 +158,12 @@ a{color:var(--pink);font-weight:700}
   <h2>Minha galeria</h2>
   <button id="bPack" class="pri big">Montar pacote para o WhatsApp</button>
   <div class="packbar" id="packBar">
-    <b id="packCount">0 escolhidas</b> — toque em 3 a 30 figurinhas (só as paradas, não GIFs).
+    <b id="packCount">0 escolhidas</b> — toque nas figurinhas e GIFs que vão para o pacote (até 30).
     <input type="text" id="packName" placeholder="Nome do pacote" maxlength="60" style="margin-top:8px">
     <div class="row" style="margin-top:8px"><button id="packCancel">Cancelar</button><button id="packGo" class="pri">Adicionar ao WhatsApp</button></div>
   </div>
   <div class="grid" id="gal"></div>
+  <p class="hint" id="packTip" style="display:none">Se escolher algum GIF, o pacote fica todo animado (o WhatsApp não mistura parada com animada).</p>
   <p class="hint" id="galEmpty">Nada aqui ainda. Crie uma figurinha ou um GIF e toque em "Salvar na galeria".</p>
 </section>
 </main>
@@ -344,23 +345,64 @@ async function renderGal(){
   const items=await store.all();const gal=$('#gal');gal.textContent='';$('#galEmpty').style.display=items.length?'none':'block';
   items.forEach(it=>{const b=document.createElement('button');b.className='tile'+(picked.has(it.id)?' picked':'');const i=document.createElement('img');const u=URL.createObjectURL(it.blob);urls.push(u);i.src=u;i.alt=it.kind==='gif'?'GIF':'Figurinha';b.appendChild(i);
     if(it.kind==='gif'){const t=document.createElement('span');t.className='tag';t.textContent='GIF';b.appendChild(t)}
-    b.onclick=()=>{if(!picking)return openSheet(it,true);if(it.kind==='gif')return toast('GIF não entra no pacote. Escolha figurinhas paradas.');
-      picked.has(it.id)?picked.delete(it.id):picked.size<30&&picked.add(it.id);b.classList.toggle('picked',picked.has(it.id));$('#packCount').textContent=picked.size+' escolhida'+(picked.size===1?'':'s')};
+    b.onclick=()=>{if(!picking)return openSheet(it,true);      picked.has(it.id)?picked.delete(it.id):picked.size<30&&picked.add(it.id);b.classList.toggle('picked',picked.has(it.id));$('#packCount').textContent=picked.size+' escolhida'+(picked.size===1?'':'s')};
     gal.appendChild(b)});
 }
 $('#bPack').onclick=()=>{
   if(!IS_APP){openInfo();return}
-  picking=true;picked.clear();$('#packBar').classList.add('on');$('#bPack').style.display='none';$('#packCount').textContent='0 escolhidas';renderGal();
+  picking=true;picked.clear();$('#packBar').classList.add('on');$('#bPack').style.display='none';$('#packCount').textContent='0 escolhidas';$('#packTip').style.display='block';renderGal();
 };
-$('#packCancel').onclick=()=>{picking=false;picked.clear();$('#packBar').classList.remove('on');$('#bPack').style.display='';renderGal()};
+$('#packCancel').onclick=()=>{picking=false;picked.clear();$('#packBar').classList.remove('on');$('#packTip').style.display='none';$('#bPack').style.display='';renderGal()};
 async function toSquare(blob,size,type){const im=new Image();im.src=URL.createObjectURL(blob);await im.decode();const c=document.createElement('canvas');c.width=c.height=size;const g=c.getContext('2d');const k=Math.min(size/im.width,size/im.height);const w=im.width*k,h=im.height*k;g.drawImage(im,(size-w)/2,(size-h)/2,w,h);return type==='image/png'?canvasBlob(c,'image/png'):toSticker(c)}
+/* ---- figurinha animada (WebP animado, regras do WhatsApp: 512x512, até 500 KB, até 10 s) ---- */
+const fcc=(u,o)=>String.fromCharCode(u[o],u[o+1],u[o+2],u[o+3]);
+const le32=(u,o)=>(u[o]|u[o+1]<<8|u[o+2]<<16|u[o+3]<<24)>>>0;
+const u24=(a,o,v)=>{a[o]=v&255;a[o+1]=v>>8&255;a[o+2]=v>>16&255};
+function riffChunks(u){const out=[];let o=12;while(o+8<=u.length){const id=fcc(u,o),n=le32(u,o+4);out.push({id,raw:u.subarray(o,o+8+n+(n&1))});o+=8+n+(n&1)}return out}
+function mkChunk(id,data){const n=data.length,c=new Uint8Array(8+n+(n&1));for(let i=0;i<4;i++)c[i]=id.charCodeAt(i);c[4]=n&255;c[5]=n>>8&255;c[6]=n>>16&255;c[7]=n>>>24&255;c.set(data,8);return c}
+function cat(parts){const n=parts.reduce((s,p)=>s+p.length,0),o=new Uint8Array(n);let k=0;for(const p of parts){o.set(p,k);k+=p.length}return o}
+function muxWebp(frames,W,H){
+  const vp8x=new Uint8Array(10);vp8x[0]=0x12;u24(vp8x,4,W-1);u24(vp8x,7,H-1);
+  const parts=[mkChunk('VP8X',vp8x),mkChunk('ANIM',new Uint8Array(6))];
+  for(const f of frames){const hdr=new Uint8Array(16);u24(hdr,6,W-1);u24(hdr,9,H-1);u24(hdr,12,Math.max(8,Math.round(f.ms)));hdr[15]=0x02;
+    const body=riffChunks(f.u8).filter(c=>c.id==='ALPH'||c.id==='VP8 '||c.id==='VP8L').map(c=>c.raw);parts.push(mkChunk('ANMF',cat([hdr,...body])))}
+  const data=cat(parts),head=new Uint8Array(12);head.set([82,73,70,70],0);const n=data.length+4;head[4]=n&255;head[5]=n>>8&255;head[6]=n>>16&255;head[7]=n>>>24&255;head.set([87,69,66,80],8);
+  return new Blob([head,data],{type:'image/webp'});
+}
+async function sourceFrames(blob){ // [{img,ms}] — GIF quadro a quadro; imagem parada vira 2 quadros iguais
+  if(blob.type==='image/gif'&&'ImageDecoder' in window){try{
+    const dec=new ImageDecoder({data:await blob.arrayBuffer(),type:'image/gif'});await dec.tracks.ready;const n=dec.tracks.selectedTrack.frameCount,out=[];
+    for(let i=0;i<n;i++){const {image}=await dec.decode({frameIndex:i});out.push({img:image,ms:image.duration?image.duration/1000:100})}
+    if(out.length>1)return out}catch(e){console.warn(e)}}
+  const im=new Image();im.src=URL.createObjectURL(blob);await im.decode();return [{img:im,ms:1000},{img:im,ms:1000}];
+}
+async function toAnimated(blob){
+  let src=await sourceFrames(blob);const total=src.reduce((s,f)=>s+f.ms,0);
+  if(total>10000){let t=0;src=src.filter(f=>(t+=f.ms)<=10000)}
+  const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d');
+  let result=null;
+  for(const step of [1,2,3,4])for(const q of [0.7,0.5,0.35,0.25]){
+    const frames=[];
+    for(let i=0;i<src.length;i+=step){const f=src[i];const ms=src.slice(i,i+step).reduce((s,x)=>s+x.ms,0);
+      const w=f.img.displayWidth||f.img.width,h=f.img.displayHeight||f.img.height,k=Math.min(512/w,512/h);
+      g.clearRect(0,0,512,512);g.drawImage(f.img,(512-w*k)/2,(512-h*k)/2,w*k,h*k);
+      frames.push({u8:new Uint8Array(await (await canvasBlob(c,'image/webp',q)).arrayBuffer()),ms})}
+    if(frames.length<2)frames.push(frames[0]);
+    result=muxWebp(frames,512,512);if(result.size<=500*1024){src.forEach(f=>f.img.close&&f.img.close());return result}
+  }
+  src.forEach(f=>f.img.close&&f.img.close());return result;
+}
 $('#packGo').onclick=async()=>{
-  if(picked.size<3)return toast('Escolha pelo menos 3 figurinhas.');
+  if(picked.size<1)return toast('Escolha pelo menos 1 figurinha ou GIF.');
   const name=$('#packName').value.trim()||'Minhas figurinhas';const items=(await store.all()).filter(i=>picked.has(i.id));
-  toast('Preparando pacote…',6000);
-  const stickers=[];for(const it of items){const b=it.blob.type==='image/webp'?it.blob:await toSquare(it.blob,512,'image/webp');stickers.push(await b64(b))}
-  const tray=await b64(await toSquare(items[0].blob,96,'image/png'));
-  window.Android.addPack(JSON.stringify({name,publisher:'Fábrica de Figurinhas',tray,stickers}));
+  const animated=items.some(i=>i.kind==='gif');
+  toast(animated?'Preparando figurinhas animadas… pode levar alguns segundos':'Preparando pacote…',15000);
+  try{
+    const stickers=[];for(const it of items){const b=animated?await toAnimated(it.blob):(it.blob.type==='image/webp'?it.blob:await toSquare(it.blob,512,'image/webp'));stickers.push(await b64(b))}
+    while(stickers.length<3)stickers.push(stickers[stickers.length%items.length]); // o WhatsApp exige 3 por pacote: repetimos as escolhidas
+    const tray=await b64(await toSquare(items[0].blob,96,'image/png'));
+    window.Android.addPack(JSON.stringify({name,publisher:'Fábrica de Figurinhas',tray,stickers,animated}));
+  }catch(e){console.error(e);toast('Não consegui preparar o pacote: '+e.message,5000)}
 };
 window.onPackResult=(ok,msg)=>{toast(msg||(ok?'Pacote enviado ao WhatsApp!':'O WhatsApp não aceitou o pacote.'),4500);if(ok)$('#packCancel').click()};
 

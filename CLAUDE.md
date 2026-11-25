@@ -24,6 +24,6 @@ Não há Android Studio na máquina. O GitHub Actions (`.github/workflows/build.
 - O job `site` (GitHub Pages) falha até o usuário ativar Settings → Pages → Source: GitHub Actions. Isso não impede o APK.
 
 ## Situação em 25/11/2026
-- Última versão publicada: 1.0.4 (GIF no pacote e mínimo de 1). Ainda não confirmado num celular com WhatsApp de verdade.
-- Feito localmente (ainda não enviado ao GitHub): nome trocado para Figuritas Zap (o `applicationId` continua `com.juliobrunno.figurinhas` para atualizar por cima) e aba de figurinha com áudio. A pasta local não é um repositório git.
+- Última versão publicada: 1.0.6 (nome Figuritas Zap + aba de figurinha com áudio). O `applicationId` continua `com.juliobrunno.figurinhas` para atualizar por cima. Ainda não confirmado num celular com WhatsApp de verdade.
+- A pasta `figurinhas-app` agora é um repositório git ligado ao GitHub (push com login pelo Git Credential Manager).
 - O usuário pediu foco no APK; o app web (link no navegador) fica para depois.

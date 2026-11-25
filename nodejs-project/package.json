@@ -1,0 +1,12 @@
+{
+  "name": "figuritas-robo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "description": "Robô do Figuritas Zap: envia figurinhas com som para o próprio WhatsApp (roda dentro do APK com nodejs-mobile).",
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "^9.6.0"
+  }
+}

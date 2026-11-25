@@ -28,9 +28,13 @@ import androidx.webkit.WebViewAssetLoader;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class MainActivity extends Activity {
     private static final int REQ_FILE = 100;
@@ -45,6 +49,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         web = new WebView(this);
         setContentView(web);
+        NodeRunner.start(this);
 
         final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
                 .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
@@ -224,6 +229,42 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 toast("Não consegui salvar: " + e.getMessage());
             }
+        }
+
+        /** Conversa com o robô (Node.js) que roda no próprio celular. Responde em window.onRobo(id, código, texto). */
+        @JavascriptInterface
+        public void robo(String method, String path, String body, String id) {
+            new Thread(() -> {
+                int code;
+                String text;
+                try {
+                    HttpURLConnection c = (HttpURLConnection) new URL("http://127.0.0.1:47321" + path).openConnection();
+                    c.setRequestMethod(method);
+                    c.setConnectTimeout(3000);
+                    c.setReadTimeout(120000);
+                    if (body != null && !body.isEmpty()) {
+                        c.setDoOutput(true);
+                        c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                        try (OutputStream o = c.getOutputStream()) { o.write(body.getBytes("UTF-8")); }
+                    }
+                    code = c.getResponseCode();
+                    InputStream in = code >= 400 ? c.getErrorStream() : c.getInputStream();
+                    ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                    if (in != null) {
+                        byte[] b = new byte[8192];
+                        int n;
+                        while ((n = in.read(b)) > 0) bo.write(b, 0, n);
+                        in.close();
+                    }
+                    text = bo.toString("UTF-8");
+                } catch (Exception e) {
+                    code = 0;
+                    String why = NodeRunner.problem != null ? NodeRunner.problem : "O robô ainda está ligando. Espere alguns segundos e tente de novo.";
+                    try { text = new JSONObject().put("error", why).toString(); } catch (Exception x) { text = "{}"; }
+                }
+                final String js = "window.onRobo&&window.onRobo(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(text) + ")";
+                web.post(() -> web.evaluateJavascript(js, null));
+            }).start();
         }
 
         @JavascriptInterface

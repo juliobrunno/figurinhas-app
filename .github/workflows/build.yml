@@ -16,8 +16,22 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.9' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
       - name: Copiar app web para dentro do Android
         run: mkdir -p web-assets && cp -r www web-assets/www
+      - name: Baixar o Node.js para celular (nodejs-mobile)
+        run: |
+          curl -sSLo nm.zip https://github.com/nodejs-mobile/nodejs-mobile/releases/download/v18.20.4/nodejs-mobile-v18.20.4-android.zip
+          mkdir -p app/libnode && unzip -q nm.zip -d app/libnode
+          rm -rf app/libnode/bin/armeabi-v7a app/libnode/bin/x86_64
+          ls -la app/libnode/bin/arm64-v8a
+      - name: Preparar o robô da figurinha com som
+        run: |
+          cd nodejs-project
+          npm install --omit=dev --ignore-scripts --no-audit --no-fund
+          zip -qr ../web-assets/nodejs-project.zip . -x '*.md' -x '*.map' -x '*.d.ts' -x '*.d.ts.map'
+          ls -la ../web-assets/nodejs-project.zip
       - name: Gerar APK
         run: gradle :app:assembleRelease --no-daemon
       - name: Renomear

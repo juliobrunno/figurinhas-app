@@ -156,6 +156,9 @@ a{color:var(--pink);font-weight:700}
       <span class="btn file"><input type="file" accept="audio/*" id="aFile" aria-label="Escolher áudio">Escolher áudio</span>
       <span class="btn file"><input type="file" accept="video/*" id="aVidFile" aria-label="Som de um vídeo">Som de um vídeo</span>
     </div>
+    <div class="row" style="margin-top:10px">
+      <span class="btn file pri"><input type="file" accept="video/*" id="aVidAll" aria-label="Usar um vídeo inteiro">Usar vídeo (imagem + som)</span>
+    </div>
     <audio id="aPlayer" controls style="width:100%;margin-top:10px;display:none"></audio>
     <p class="hint" id="aInfo">Nenhum som escolhido ainda.</p>
     <label for="aStart">Começa em <span id="lAStart">0,0</span> s</label><input type="range" id="aStart" min="0" max="0" step="0.1" value="0">
@@ -175,7 +178,24 @@ a{color:var(--pink);font-weight:700}
     <button id="aSave" disabled>Salvar no celular</button>
     <button id="aShare" class="pri" disabled>Enviar no WhatsApp</button>
   </div>
-  <p class="hint">O WhatsApp não deixa figurinha comum ter som. Por isso a figurinha com áudio vai como um vídeo curtinho e quadrado: quem receber toca nele e ouve.</p>
+  <p class="hint">Este botão faz um vídeo curtinho e quadrado com som, que dá para mandar para qualquer pessoa.</p>
+  <div class="card" id="somCard" style="border:2px solid var(--pink)">
+    <b style="font:800 20px/1.1 'Baloo 2',sans-serif">Figurinha com som de verdade</b>
+    <p class="hint" style="margin-top:4px">O robô do app manda a figurinha com som para a sua conversa <b>"Você"</b> no WhatsApp. Lá, toque nela e escolha <b>Favoritar</b>. Depois é só usar em qualquer conversa.</p>
+    <p class="hint">Atenção: o robô usa um jeito <b>não oficial</b> de falar com o WhatsApp. Uso pessoal, por sua conta e risco (o WhatsApp pode bloquear o número).</p>
+    <p id="roboSt" style="font-weight:800;margin:10px 0 0">Verificando o robô…</p>
+    <div id="roboPair" style="display:none">
+      <label for="roboTel">Seu número do WhatsApp (com 55 e DDD)</label>
+      <div class="row"><input type="text" id="roboTel" inputmode="tel" autocomplete="tel" placeholder="Ex.: 5511999998888" style="flex:1 1 180px"><button id="roboGo" class="pri" style="flex:0 0 auto">Pegar código</button></div>
+    </div>
+    <div id="roboCode" style="display:none;margin-top:10px">
+      <div id="roboCodeTxt" style="font:800 34px/1.1 'Baloo 2',monospace;letter-spacing:3px;text-align:center;background:var(--yel);color:var(--deep);border-radius:14px;padding:10px">----</div>
+      <p class="hint">No WhatsApp: toque nos <b>3 pontinhos ⋮</b> › <b>Dispositivos conectados</b> › <b>Conectar dispositivo</b> › <b>Conectar com número de telefone</b> e digite este código. O código vale por poucos minutos.</p>
+    </div>
+    <button id="roboSend" class="pink big" disabled>Enviar figurinha com som para mim</button>
+    <div class="bar" id="roboBar"><i></i></div>
+    <button id="roboOut" class="big" style="display:none">Desconectar o robô</button>
+  </div>
 </section>
 
 <section id="t-gal">
@@ -413,11 +433,12 @@ window.onPackResult=(ok,msg)=>{toast(msg||(ok?'Pacote enviado ao WhatsApp!':'O W
 const acv=$('#acv'),acx=acv.getContext('2d');
 const A={frames:null,dur:0,bg:'#ffffff',fx:'pula',audio:null,video:null,busy:false};
 let actx=null;const ac=()=>actx||(actx=new (window.AudioContext||window.webkitAudioContext)());
-const aCheck=()=>{$('#aMake').disabled=!(A.frames&&A.audio)||A.busy};
-function aFrameAt(t){let x=t%A.dur;for(const f of A.frames){if(x<f.ms)return f.img;x-=f.ms}return A.frames[0].img}
-function aDraw(t){
-  acx.fillStyle=A.bg;acx.fillRect(0,0,512,512);if(!A.frames)return;
-  const im=aFrameAt(t),w=im.displayWidth||im.width,h=im.displayHeight||im.height,k=Math.min(440/w,440/h);
+const aCheck=()=>{$('#aMake').disabled=!(A.frames&&A.audio)||A.busy;if(window.roboCheck)window.roboCheck()};
+function aFrameAt(t){if(A.isVideo)return A.vid;let x=t%A.dur;for(const f of A.frames){if(x<f.ms)return f.img;x-=f.ms}return A.frames[0].img}
+function aDraw(t,g=acx,bg=true){
+  if(bg){g.fillStyle=A.bg;g.fillRect(0,0,512,512)}else g.clearRect(0,0,512,512);if(!A.frames)return;
+  const im=aFrameAt(t),w=im.videoWidth||im.displayWidth||im.width,h=im.videoHeight||im.displayHeight||im.height;if(!w||!h)return;
+  const box=bg?440:500,k=Math.min(box/w,box/h);const acx=g;
   let dx=0,dy=0,r=0,s=1;const sec=t/1000;
   if(A.fx==='pula')dy=20-Math.abs(Math.sin(sec*Math.PI*1.6))*50;
   if(A.fx==='pulsa')s=1+Math.sin(sec*Math.PI*3)*0.08;
@@ -425,9 +446,24 @@ function aDraw(t){
   acx.save();acx.translate(256+dx,256+dy);acx.rotate(r);acx.scale(s,s);acx.drawImage(im,-w*k/2,-h*k/2,w*k,h*k);acx.restore();
   drawCaption(acx,$('#aTxt').value.trim(),512,512,'bot','#ffffff');
 }
-const aLoop=ts=>{if(!A.busy&&A.frames&&$('#t-audio').classList.contains('on'))aDraw(ts);requestAnimationFrame(aLoop)};requestAnimationFrame(aLoop);
+const aLoop=ts=>{
+  if(!A.busy&&A.frames&&$('#t-audio').classList.contains('on')){
+    if(A.isVideo){const s=+$('#aStart').value,e=s+(+$('#aLen').value);if(A.vid.paused)A.vid.play().catch(()=>{});if(A.vid.currentTime<s-0.3||A.vid.currentTime>e)A.vid.currentTime=s}
+    aDraw(ts)}
+  requestAnimationFrame(aLoop)};requestAnimationFrame(aLoop);
+A.vid=document.createElement('video');A.vid.muted=true;A.vid.playsInline=true;A.vid.preload='auto';
+const aSeek=t=>new Promise(r=>{const v=A.vid;const h=()=>{v.removeEventListener('seeked',h);r()};v.addEventListener('seeked',h);v.currentTime=t;setTimeout(h,1500)});
+async function aSetVideo(file){
+  toast('Abrindo o vídeo…');
+  A.vid.src=URL.createObjectURL(file);
+  try{await new Promise((ok,bad)=>{A.vid.onloadeddata=ok;A.vid.onerror=bad;setTimeout(bad,15000)})}catch(e){return toast('Não consegui abrir esse vídeo.')}
+  if(A.frames&&!A.isVideo)A.frames.forEach(f=>f.img.close&&f.img.close());
+  A.isVideo=true;A.frames=[{img:A.vid,ms:1000}];A.dur=1000;$('#emptyA').style.display='none';
+  $$('#cFx button').forEach(b=>b.classList.toggle('sel',b.dataset.v==='parada'));A.fx='parada';
+  await aSetAudio(file,'Som do vídeo');aCheck();
+}
 async function aSetImage(blob){
-  try{const fr=await sourceFrames(blob);if(A.frames)A.frames.forEach(f=>f.img.close&&f.img.close());A.frames=fr;A.dur=fr.reduce((s,f)=>s+f.ms,0)||1000;$('#emptyA').style.display='none';aCheck()}
+  try{A.isVideo=false;A.vid.pause();const fr=await sourceFrames(blob);if(A.frames)A.frames.forEach(f=>f.img.close&&f.img.close());A.frames=fr;A.dur=fr.reduce((s,f)=>s+f.ms,0)||1000;$('#emptyA').style.display='none';aCheck()}
   catch(e){toast('Não consegui abrir essa imagem.')}
 }
 async function aSetAudio(blob,label){
@@ -466,6 +502,7 @@ $('#aMake').onclick=async()=>{
   try{
     const ctx=ac();await ctx.resume();
     const dest=ctx.createMediaStreamDestination(),src=ctx.createBufferSource();src.buffer=A.audio;src.connect(dest);src.connect(ctx.destination);
+    if(A.isVideo){await aSeek(start);A.vid.play().catch(()=>{})}
     const vs=acv.captureStream(30);aDraw(0);
     const stream=new MediaStream([...vs.getVideoTracks(),...dest.stream.getAudioTracks()]);
     const mr=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:1500000,audioBitsPerSecond:128000}:undefined);
@@ -483,6 +520,103 @@ $('#aMake').onclick=async()=>{
 };
 $('#aShare').onclick=()=>share(A.video,'figurinha-audio');
 $('#aSave').onclick=()=>download(A.video,'figurinha-audio-'+Date.now()+'.'+ext(A.video.type));
+$('#aVidAll').onchange=e=>{const f=e.target.files[0];if(f)aSetVideo(f);e.target.value=''};
+
+/* ---- figurinha com som de verdade: WebP animado + som OGG Opus, enviados pelo robô ---- */
+const scv=document.createElement('canvas');scv.width=scv.height=512;const scx=scv.getContext('2d');
+async function makeSoundWebp(start,len,onp){
+  for(const fps of [10,8,6,4]){
+    const n=Math.max(2,Math.round(len*fps)),shots=[];
+    for(let i=0;i<n;i++){const t=i*1000/fps;if(A.isVideo)await aSeek(start+t/1000);aDraw(t,scx,false);shots.push(await createImageBitmap(scv));onp&&onp(i/n*0.5)}
+    for(const q of [0.75,0.55,0.4,0.28]){
+      const frames=[];
+      for(const b of shots){scx.clearRect(0,0,512,512);scx.drawImage(b,0,0);frames.push({u8:new Uint8Array(await (await canvasBlob(scv,'image/webp',q)).arrayBuffer()),ms:1000/fps})}
+      const blob=muxWebp(frames,512,512);
+      if(blob.size<=500*1024){shots.forEach(b=>b.close());return blob}
+    }
+    shots.forEach(b=>b.close());
+  }
+  throw new Error('A figurinha ficou grande demais. Diminua a duração.');
+}
+// OGG Opus (48 kHz, mono) feito no próprio aparelho, com o codificador do navegador (WebCodecs)
+const CRC=(()=>{const t=new Uint32Array(256);for(let i=0;i<256;i++){let r=i<<24;for(let j=0;j<8;j++)r=r&0x80000000?(r<<1)^0x04c11db7:r<<1;t[i]=r>>>0}return t})();
+function oggPage(flags,granule,serial,seq,packets){
+  const lace=[];for(const p of packets){let n=p.length;while(n>=255){lace.push(255);n-=255}lace.push(n)}
+  const len=27+lace.length+packets.reduce((s,p)=>s+p.length,0),b=new Uint8Array(len),v=new DataView(b.buffer);
+  b.set([79,103,103,83],0);b[4]=0;b[5]=flags;v.setBigUint64(6,BigInt(granule),true);v.setUint32(14,serial,true);v.setUint32(18,seq,true);b[26]=lace.length;b.set(lace,27);
+  let o=27+lace.length;for(const p of packets){b.set(p,o);o+=p.length}
+  let c=0;for(let i=0;i<len;i++)c=((c<<8)^CRC[((c>>>24)^b[i])&255])>>>0;v.setUint32(22,c,true);return b;
+}
+async function makeOggOpus(buf,start,len){
+  if(!window.AudioEncoder)throw new Error('Este aparelho não tem o codificador de som. Atualize o "Android System WebView" na Play Store.');
+  const sr=48000,n=Math.round(len*sr);
+  const off=new OfflineAudioContext(1,n,sr),src=off.createBufferSource();src.buffer=buf;src.connect(off.destination);src.start(0,start,len);
+  const pcm=(await off.startRendering()).getChannelData(0);
+  const fade=Math.min(n>>2,sr*0.02);for(let i=0;i<fade;i++){pcm[i]*=i/fade;pcm[n-1-i]*=i/fade}
+  const pk=[];let err=null;
+  const enc=new AudioEncoder({output:c=>{const d=new Uint8Array(c.byteLength);c.copyTo(d);pk.push(d)},error:e=>err=e});
+  enc.configure({codec:'opus',sampleRate:sr,numberOfChannels:1,bitrate:64000});
+  for(let i=0;i<n;i+=4800){const k=Math.min(4800,n-i);enc.encode(new AudioData({format:'f32',sampleRate:sr,numberOfFrames:k,numberOfChannels:1,timestamp:Math.round(i/sr*1e6),data:pcm.slice(i,i+k)}))}
+  await enc.flush();enc.close();if(err)throw err;if(!pk.length)throw new Error('O som ficou vazio.');
+  const pre=312,serial=(Math.random()*0xffffffff)>>>0,te=new TextEncoder();
+  const head=new Uint8Array(19),hv=new DataView(head.buffer);head.set(te.encode('OpusHead'));head[8]=1;head[9]=1;hv.setUint16(10,pre,true);hv.setUint32(12,sr,true);
+  const vendor=te.encode('Figuritas Zap'),tags=new Uint8Array(8+4+vendor.length+4),tv=new DataView(tags.buffer);tags.set(te.encode('OpusTags'));tv.setUint32(8,vendor.length,true);tags.set(vendor,12);
+  const pages=[oggPage(2,0,serial,0,[head]),oggPage(0,0,serial,1,[tags])];
+  let seq=2,samples=0;
+  for(let i=0;i<pk.length;i+=40){
+    const grp=pk.slice(i,i+40);samples+=grp.length*960;const last=i+40>=pk.length;
+    pages.push(oggPage(last?4:0,last?pre+n:Math.min(pre+samples,pre+n),serial,seq++,grp));
+  }
+  return new Blob(pages,{type:'audio/ogg'});
+}
+
+/* ---- conversa com o robô (no app: ponte Android; no PC: direto no 127.0.0.1) ---- */
+const roboCb={};let roboN=0;
+window.onRobo=(id,code,text)=>{const cb=roboCb[id];if(!cb)return;delete roboCb[id];let j={};try{j=JSON.parse(text)}catch(e){}
+  if(code>=200&&code<300)cb.res(j);else cb.rej(new Error(j.error||(code?'Erro '+code:'O robô ainda está ligando. Espere alguns segundos.')))};
+function robo(method,path,body){
+  if(window.Android&&window.Android.robo)return new Promise((res,rej)=>{const id='r'+(++roboN);roboCb[id]={res,rej};window.Android.robo(method,path,body?JSON.stringify(body):'',id)});
+  return fetch('http://127.0.0.1:47321'+path,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined})
+    .then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Erro '+r.status);return j},()=>{throw new Error('O robô só funciona no app do celular.')});
+}
+const R={state:null};
+function roboShow(st){
+  R.state=st.state;const t=$('#roboSt');
+  const map={desconectado:'⚪ Robô desligado do WhatsApp. Digite seu número para conectar.',conectando:'🟡 Conectando ao WhatsApp…',aguardando_codigo:'🟡 Digite o código abaixo no seu WhatsApp.',conectado:'🟢 Robô conectado'+(st.me?' ao número '+st.me.split('@')[0].split(':')[0]:'')+'.'};
+  t.textContent=(map[st.state]||st.state)+(st.error?' — '+st.error:'');
+  $('#roboPair').style.display=st.state==='desconectado'?'block':'none';
+  $('#roboCode').style.display=st.state==='aguardando_codigo'&&st.code?'block':'none';
+  if(st.code)$('#roboCodeTxt').textContent=st.code.replace(/^(.{4})(.{4})$/,'$1-$2');
+  $('#roboOut').style.display=st.state==='conectado'||st.state==='aguardando_codigo'?'':'none';
+  roboCheck();
+}
+const roboCheck=window.roboCheck=()=>{$('#roboSend').disabled=!(R.state==='conectado'&&A.frames&&A.audio)||R.busy};
+async function roboPoll(){
+  if($('#t-audio').classList.contains('on')&&!R.busy){try{roboShow(await robo('GET','/status'))}catch(e){$('#roboSt').textContent='⚪ '+e.message;R.state=null;roboCheck()}}
+  setTimeout(roboPoll,R.state==='aguardando_codigo'||R.state==='conectando'?2000:5000);
+}
+roboPoll();
+$('#roboTel').value=ls.get('roboTel')||'';
+$('#roboGo').onclick=async()=>{
+  const phone=$('#roboTel').value.replace(/\D/g,'');if(phone.length<12)return toast('Digite o número com 55 + DDD + número. Ex.: 5511999998888',4500);
+  ls.set('roboTel',phone);const b=$('#roboGo');b.disabled=true;b.textContent='Pedindo…';
+  try{const r=await robo('POST','/pair',{phone});roboShow({state:'aguardando_codigo',code:r.code});toast('Código pronto! Digite no WhatsApp.',4000)}
+  catch(e){toast(e.message,5000)}
+  b.disabled=false;b.textContent='Pegar código';
+};
+$('#roboOut').onclick=async()=>{if(!confirm('Desconectar o robô do seu WhatsApp?'))return;try{await robo('POST','/logout');toast('Robô desconectado.')}catch(e){toast(e.message)}};
+$('#roboSend').onclick=async()=>{
+  const btn=$('#roboSend'),bar=$('#roboBar');R.busy=true;A.busy=true;roboCheck();aCheck();bar.style.display='block';
+  const p=x=>{bar.firstChild.style.width=Math.round(x*100)+'%';btn.textContent=`Preparando… ${Math.round(x*100)}%`};
+  try{
+    const start=+$('#aStart').value,len=Math.max(1,Math.min(+$('#aLen').value,10,A.audio.duration-start));
+    const webp=await makeSoundWebp(A.isVideo?start:0,len,p);p(0.6);
+    const ogg=await makeOggOpus(A.audio,start,len);p(0.7);btn.textContent='Enviando…';
+    await robo('POST','/send',{webp:await b64(webp),ogg:await b64(ogg),seconds:len,animated:true});p(1);
+    toast('Enviada! Abra a conversa "Você" no WhatsApp, toque na figurinha e favorite.',6000);
+  }catch(e){console.error(e);toast('Não deu certo: '+e.message,6000)}
+  R.busy=false;A.busy=false;aCheck();roboCheck();btn.textContent='Enviar figurinha com som para mim';bar.style.display='none';bar.firstChild.style.width='0';
+};
 async function openPicker(){
   const items=await store.all();if(!items.length)return toast('Sua galeria está vazia. Crie uma figurinha ou um GIF primeiro.',4000);
   $('.sheet .prev').style.display='none';$('#shActs').textContent='';

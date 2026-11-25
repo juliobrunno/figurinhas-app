@@ -2,3 +2,6 @@ build/
 .gradle/
 web-assets/
 local.properties
+app/libnode/
+nodejs-project/node_modules/
+app/.cxx/

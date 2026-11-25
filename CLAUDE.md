@@ -12,6 +12,14 @@ App para criar figurinhas e GIFs e mandar no WhatsApp. Duas partes que usam a me
 ## Figurinha com áudio
 Figurinha do WhatsApp não tem som. A aba Áudio gera um **vídeo MP4 quadrado 512x512** (imagem/GIF + efeito + texto + som de até 10 s) com `canvas.captureStream` + `MediaRecorder` (prefere MP4, cai para WebM se o WebView não suportar). Som: gravar voz (microfone, permissão RECORD_AUDIO tratada em `onPermissionRequest`), arquivo de áudio ou som de um vídeo. `saveFile` grava vídeos em Movies/Figuritas Zap.
 
+## Figurinha com som de verdade (robô dentro do APK)
+O usuário pediu (uso pessoal, ciente do risco de bloqueio do número). Só dá para mandar por cliente NÃO oficial (Baileys 7.0.0-rc14), como mensagem para o próprio número (conversa "Você"); o usuário favorita lá. Formato (engenharia reversa, de github.com/coelhobugado/whatsapp-figurinhas-com-som, MIT): Message.134 > .1 > .26 StickerMessage > .26 AudioMessage; injetado trocando `proto.Message.encode`.
+- `nodejs-project/main.mjs`: servidor em 127.0.0.1:47321 — GET /status, POST /pair {phone} (código de 8 letras, pois não dá para ler QR na própria tela), POST /send {webp, ogg base64, seconds, animated}, POST /logout. `polyfills.mjs` completa o Node 18.
+- Roda com nodejs-mobile v18.20.4 (só arm64-v8a): `NodeRunner.java` descompacta `assets/nodejs-project.zip` em filesDir e liga o Node uma vez; `cpp/native-lib.cpp` chama `node::Start`. A tela fala com o robô pela ponte `Android.robo(method, path, body, id)` → `window.onRobo`.
+- No CI: baixa o nodejs-mobile para `app/libnode`, faz `npm install --omit=dev --ignore-scripts` (o preinstall do Baileys barra Node < 20) e zipa para `web-assets/nodejs-project.zip`.
+- Na tela (aba Áudio): WebP animado 512x512 ≤ 500 KB (`makeSoundWebp`, usa `muxWebp`) e OGG Opus 48 kHz mono feito com WebCodecs `AudioEncoder` + páginas Ogg montadas em JS (`makeOggOpus`). Botão "Usar vídeo (imagem + som)" usa o trecho do vídeo como imagem e som.
+- Testado no PC: WebP e OGG válidos; robô liga no Node 18. Login e envio reais ainda não testados.
+
 ## Regras do WhatsApp já tratadas
 - Pacote precisa de 3 a 30 figurinhas: o app aceita a partir de 1 e repete as escolhidas até chegar a 3.
 - Pacote não mistura parada com animada: se tiver algum GIF, tudo vira WebP animado (as paradas viram 2 quadros iguais). O WebP animado é montado em JS (`muxWebp`), com GIF lido quadro a quadro pelo `ImageDecoder`; limite 512x512, até 500 KB, até 10 s.

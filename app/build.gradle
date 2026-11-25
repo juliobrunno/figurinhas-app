@@ -8,7 +8,11 @@ android {
         targetSdk 34
         versionCode = Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
         versionName = "1.0." + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
+        // O robô (Node.js para celular) só vem para Android de 64 bits
+        ndk { abiFilters 'arm64-v8a' }
+        externalNativeBuild { cmake { arguments '-DANDROID_STL=c++_shared' } }
     }
+    externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt'; version '3.22.1' } }
     signingConfigs {
         release {
             storeFile file('figurinhas.jks')
@@ -21,8 +25,9 @@ android {
         release { minifyEnabled false; signingConfig signingConfigs.release }
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-    sourceSets { main { assets.srcDirs = ['src/main/assets', '../web-assets'] } }
-    aaptOptions { noCompress 'webp' }
+    sourceSets { main { assets.srcDirs = ['src/main/assets', '../web-assets']; jniLibs.srcDirs = ['libnode/bin'] } }
+    aaptOptions { noCompress 'webp', 'zip' }
+    packagingOptions { jniLibs { useLegacyPackaging true; pickFirsts += ['**/libnode.so', '**/libc++_shared.so'] } }
 }
 dependencies {
     implementation 'androidx.webkit:webkit:1.11.0'

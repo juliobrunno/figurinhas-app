@@ -58,7 +58,7 @@ background:repeating-conic-gradient(light-dark(#ece6fa,#2a2250) 0 25%,transparen
 .tile .tag{position:absolute;left:6px;bottom:6px;background:var(--deep);color:#fff;font-size:11px;font-weight:800;padding:1px 7px;border-radius:8px}
 .tile.picked{border-color:var(--pink);box-shadow:0 0 0 3px var(--pink) inset}
 .tile.picked::after{content:'✓';position:absolute;top:6px;right:6px;background:var(--pink);color:#fff;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-weight:800}
-nav{position:fixed;left:0;right:0;bottom:0;background:var(--deep);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--deep);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:5}
 nav button{background:none;border:0;color:#cfc6f2;flex-direction:column;gap:2px;font-size:12px;min-height:60px;box-shadow:none;padding:6px 2px}
 button.rec{animation:pisca 1s infinite}@keyframes pisca{50%{opacity:.6}}
 .aout{display:none;width:100%;aspect-ratio:1;border-radius:22px;margin-top:12px;background:#000}
@@ -178,23 +178,6 @@ a{color:var(--pink);font-weight:700}
   <p class="hint">O WhatsApp não deixa figurinha comum ter som. Por isso a figurinha com áudio vai como um vídeo curtinho e quadrado: quem receber toca nele e ouve.</p>
 </section>
 
-<section id="t-busca">
-  <h2>Buscar GIFs prontos</h2>
-  <div class="chips" id="cKind"><button data-v="gifs" class="sel">GIFs</button><button data-v="stickers">Figurinhas</button></div>
-  <form id="fSearch" class="row" style="margin-top:10px">
-    <input type="search" id="q" placeholder="Ex.: bom dia, gato, risada" style="flex:1 1 200px" enterkeyhint="search">
-    <button class="pri" style="flex:0 0 auto">Buscar</button>
-  </form>
-  <div id="keyBox" class="card" style="display:none">
-    <b>Falta só uma chave gratuita do Giphy</b>
-    <p class="hint" style="margin-top:4px">1. Abra <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">developers.giphy.com</a> e crie uma conta grátis.<br>2. Toque em <i>Create an API Key</i>, escolha <i>API</i> e dê um nome qualquer.<br>3. Copie a chave e cole aqui:</p>
-    <div class="row" style="margin-top:8px"><input type="text" id="kIn" placeholder="Cole a chave aqui" autocomplete="off"><button id="kSave" style="flex:0 0 auto">Salvar</button></div>
-  </div>
-  <div class="grid" id="res"></div>
-  <p class="hint" id="resHint">Toque num resultado para enviar ou salvar. Resultados via GIPHY.</p>
-  <p class="hint"><a href="#" id="kChange">Trocar chave do Giphy</a></p>
-</section>
-
 <section id="t-gal">
   <h2>Minha galeria</h2>
   <button id="bPack" class="pri big">Montar pacote para o WhatsApp</button>
@@ -213,7 +196,6 @@ a{color:var(--pink);font-weight:700}
   <button data-t="criar" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v4h4"/><circle cx="10" cy="11" r="2"/><path d="M6 18l4-4 3 3 2-2 3 3"/></svg>Criar</button>
   <button data-t="gif"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></svg>GIF</button>
   <button data-t="audio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 10v4h4l5 4V6L8 10z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>Áudio</button>
-  <button data-t="busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Buscar</button>
   <button data-t="gal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>Galeria</button>
 </nav>
 
@@ -358,27 +340,6 @@ $('#bMake').onclick=async()=>{
 $('#gifOut').onclick=()=>{$('#gifOut').style.display='none';vid.style.display='block'};
 $('#bSaveG').onclick=async()=>{await store.add({id:Date.now(),kind:'gif',blob:gifBlob});toast('GIF salvo na galeria!')};
 $('#bShareG').onclick=()=>share(gifBlob,'gif');
-
-/* ---------- busca no Giphy ---------- */
-let kind='gifs';chips('#cKind',v=>{kind=v;if($('#q').value.trim())search()});
-const key=()=>ls.get('giphyKey')||'';
-$('#kSave').onclick=e=>{e.preventDefault();const k=$('#kIn').value.trim();if(!k)return;ls.set('giphyKey',k);$('#keyBox').style.display='none';toast('Chave salva!');if($('#q').value.trim())search()};
-$('#kChange').onclick=e=>{e.preventDefault();$('#kIn').value=key();$('#keyBox').style.display='block'};
-$('#fSearch').onsubmit=e=>{e.preventDefault();search()};
-async function search(){
-  const q=$('#q').value.trim();if(!q)return;if(!key()){$('#keyBox').style.display='block';return}
-  const res=$('#res');res.textContent='';$('#resHint').textContent='Buscando…';
-  try{
-    const r=await fetch(`https://api.giphy.com/v1/${kind}/search?api_key=${encodeURIComponent(key())}&q=${encodeURIComponent(q)}&limit=30&lang=pt&rating=pg-13`);
-    if(r.status===401||r.status===403){$('#keyBox').style.display='block';$('#resHint').textContent='A chave do Giphy não foi aceita. Confira e cole de novo.';return}
-    const j=await r.json();const list=j.data||[];
-    if(!list.length){$('#resHint').textContent='Nada encontrado. Tente outra palavra.';return}
-    list.forEach(d=>{const im=d.images||{};const thumb=(im.fixed_width_downsampled||im.fixed_width||{}).url;const full=(im.downsized||im.original||{}).url;if(!thumb||!full)return;
-      const b=document.createElement('button');b.className='tile';const i=document.createElement('img');i.loading='lazy';i.alt=d.title||'GIF';i.src=thumb;b.appendChild(i);
-      b.onclick=async()=>{toast('Carregando…',1500);try{const blob=await (await fetch(full)).blob();openSheet({kind:'gif',blob},false)}catch(e){toast('Não consegui baixar esse GIF.')}};res.appendChild(b)});
-    $('#resHint').textContent='Toque num resultado para enviar ou salvar. Resultados via GIPHY.';
-  }catch(e){$('#resHint').textContent='Sem conexão com o Giphy. Confira a internet.'}
-}
 
 /* ---------- galeria e pacote ---------- */
 let picking=false,picked=new Set(),urls=[];

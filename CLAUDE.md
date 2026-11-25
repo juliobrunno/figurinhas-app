@@ -4,7 +4,7 @@ O dono do projeto (juliobrunno) é leigo em informática e terminal: explique tu
 
 ## O que é
 App para criar figurinhas e GIFs e mandar no WhatsApp. Duas partes que usam a mesma tela:
-- `www/index.html`: o app inteiro (HTML + CSS + JS num arquivo só). Funções: foto → figurinha (512x512 WebP, até 100 KB), vídeo → GIF (biblioteca gifenc via jsdelivr), galeria (IndexedDB), busca no Giphy (chave grátis salva em localStorage), botão "Enviar no WhatsApp", aba **Áudio** (figurinha com áudio).
+- `www/index.html`: o app inteiro (HTML + CSS + JS num arquivo só). Funções: foto → figurinha (512x512 WebP, até 100 KB), vídeo → GIF (biblioteca gifenc via jsdelivr), galeria (IndexedDB), botão "Enviar no WhatsApp", aba **Áudio** (figurinha com áudio).
 - `app/`: app Android (Java, sem Kotlin) que abre o `www` dentro de um WebView (WebViewAssetLoader, endereço `https://appassets.androidplatform.net/assets/www/index.html`).
   - `MainActivity.java`: ponte JavaScript `window.Android` com `shareFile`, `saveFile` e `addPack`.
   - `StickerProvider.java`: ContentProvider no formato oficial do WhatsApp para pacotes de terceiros (`/metadata`, `/stickers/<id>`, `/stickers_asset/<id>/<arquivo>`). Pacotes ficam em `filesDir/packs/<id>/` com `info.json`, `tray.png` e `1.webp`, `2.webp`...

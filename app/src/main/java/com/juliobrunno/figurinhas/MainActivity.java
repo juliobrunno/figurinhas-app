@@ -1,15 +1,18 @@
 package com.juliobrunno.figurinhas;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -32,6 +35,8 @@ import java.io.OutputStream;
 public class MainActivity extends Activity {
     private static final int REQ_FILE = 100;
     private static final int REQ_PACK = 200;
+    private static final int REQ_MIC = 300;
+    private PermissionRequest pendingMic;
     private WebView web;
     private ValueCallback<Uri[]> fileCallback;
 
@@ -80,6 +85,24 @@ public class MainActivity extends Activity {
                 }
                 return true;
             }
+
+            @Override
+            public void onPermissionRequest(PermissionRequest req) {
+                runOnUiThread(() -> {
+                    boolean audio = false;
+                    for (String r : req.getResources()) {
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) audio = true;
+                    }
+                    if (!audio) { req.deny(); return; }
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        req.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                    } else {
+                        if (pendingMic != null) pendingMic.deny();
+                        pendingMic = req;
+                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC);
+                    }
+                });
+            }
         });
 
         web.addJavascriptInterface(new Bridge(), "Android");
@@ -116,6 +139,20 @@ public class MainActivity extends Activity {
                 String err = data != null ? data.getStringExtra("validation_error") : null;
                 callJs(false, err != null ? "O WhatsApp recusou: " + err : "Pacote não foi adicionado.");
             }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == REQ_MIC && pendingMic != null) {
+            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+                pendingMic.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+            } else {
+                pendingMic.deny();
+                toast("Sem permissão do microfone não dá para gravar a voz.");
+            }
+            pendingMic = null;
         }
     }
 
@@ -171,15 +208,16 @@ public class MainActivity extends Activity {
             try {
                 byte[] bytes = Base64.decode(b64, Base64.DEFAULT);
                 if (Build.VERSION.SDK_INT >= 29) {
+                    boolean video = mime != null && mime.startsWith("video/");
                     ContentValues v = new ContentValues();
-                    v.put(MediaStore.Images.Media.DISPLAY_NAME, clean(name));
-                    v.put(MediaStore.Images.Media.MIME_TYPE, mime);
-                    v.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Figurinhas");
-                    Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
+                    v.put(MediaStore.MediaColumns.DISPLAY_NAME, clean(name));
+                    v.put(MediaStore.MediaColumns.MIME_TYPE, mime);
+                    v.put(MediaStore.MediaColumns.RELATIVE_PATH, video ? "Movies/Figuritas Zap" : "Pictures/Figuritas Zap");
+                    Uri uri = getContentResolver().insert(video ? MediaStore.Video.Media.EXTERNAL_CONTENT_URI : MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
                     try (OutputStream o = getContentResolver().openOutputStream(uri)) {
                         o.write(bytes);
                     }
-                    toast("Salvo em Fotos › Figurinhas");
+                    toast(video ? "Salvo em Vídeos › Figuritas Zap" : "Salvo em Fotos › Figuritas Zap");
                 } else {
                     shareFile(b64, mime, name);
                 }
@@ -210,7 +248,7 @@ public class MainActivity extends Activity {
                 }
                 JSONObject info = new JSONObject();
                 info.put("name", j.optString("name", "Minhas figurinhas"));
-                info.put("publisher", j.optString("publisher", "Fábrica de Figurinhas"));
+                info.put("publisher", j.optString("publisher", "Figuritas Zap"));
                 info.put("count", st.length());
                 info.put("animated", j.optBoolean("animated", false));
                 try (FileOutputStream o = new FileOutputStream(new File(dir, "info.json"))) {

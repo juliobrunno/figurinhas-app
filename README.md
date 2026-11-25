@@ -1,4 +1,4 @@
-# Fábrica de Figurinhas
+# Figuritas Zap
 
 App para criar figurinhas e GIFs e mandar no WhatsApp.
 
@@ -8,6 +8,6 @@ App para criar figurinhas e GIFs e mandar no WhatsApp.
 - **Buscar GIFs**: pesquisa no Giphy (precisa de uma chave grátis).
 - **App Android**: monta pacotes de 3 a 30 figurinhas e adiciona direto ao WhatsApp.
 
-Baixe o app Android em **Releases → Figurinhas.apk**. A versão web fica em GitHub Pages.
+Baixe o app Android em **Releases → FiguritasZap.apk**. A versão web fica em GitHub Pages.
 
 Cada envio para a branch `main` gera um APK novo automaticamente (pasta `.github/workflows`).

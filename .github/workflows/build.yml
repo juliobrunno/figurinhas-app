@@ -21,14 +21,14 @@ jobs:
       - name: Gerar APK
         run: gradle :app:assembleRelease --no-daemon
       - name: Renomear
-        run: cp app/build/outputs/apk/release/app-release.apk Figurinhas.apk
+        run: cp app/build/outputs/apk/release/app-release.apk FiguritasZap.apk
       - name: Publicar para download
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: Figurinhas 1.0.${{ github.run_number }}
-          body: Baixe o arquivo Figurinhas.apk abaixo e abra no celular Android para instalar.
-          files: Figurinhas.apk
+          name: Figuritas Zap 1.0.${{ github.run_number }}
+          body: Baixe o arquivo FiguritasZap.apk abaixo e abra no celular Android para instalar.
+          files: FiguritasZap.apk
           make_latest: true
   site:
     runs-on: ubuntu-latest

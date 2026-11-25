@@ -10,3 +10,7 @@ App para criar figurinhas e GIFs e mandar no WhatsApp.
 Baixe o app Android em **Releases → FiguritasZap.apk**. A versão web fica em GitHub Pages.
 
 Cada envio para a branch `main` gera um APK novo automaticamente (pasta `.github/workflows`).
+
+---
+
+© 2026 Pio-Buz. Todos os direitos reservados.

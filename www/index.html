@@ -168,7 +168,14 @@ a{color:var(--pink);font-weight:700}
     <label>Efeito</label>
     <div class="chips" id="cFx"><button data-v="parada">Parada</button><button data-v="pula" class="sel">Pulando</button><button data-v="pulsa">Pulsando</button><button data-v="treme">Tremendo</button></div>
     <label>Fundo</label>
-    <div class="chips" id="cABg"><button data-v="#ffffff" class="sel">Branco</button><button data-v="#000000">Preto</button><button data-v="#1d1538">Roxo</button><button data-v="#25d366">Verde</button></div>
+    <div class="row"><div class="chips" id="cABg" style="flex:1 1 220px"><button data-v="transparent" class="sel">Transparente</button><button data-v="#ffffff">Branco</button><button data-v="#000000">Preto</button><button data-v="#1d1538">Roxo</button><button data-v="#25d366">Verde</button></div><input type="color" id="aBgCol" value="#ffd23f" aria-label="Outra cor de fundo"></div>
+    <p class="hint" style="margin-top:4px">O fundo transparente vale para a figurinha. No vídeo, ele vira branco, porque vídeo não tem transparência.</p>
+    <label>Formato</label>
+    <div class="chips" id="cAShape"><button data-v="livre" class="sel">Livre</button><button data-v="circulo">Círculo</button><button data-v="arred">Arredondado</button><button data-v="quadrado">Quadrado</button></div>
+    <label>Borda</label>
+    <div class="row"><div class="chips" id="cAOut" style="flex:1 1 220px"><button data-v="0">Sem</button><button data-v="8" class="sel">Fina</button><button data-v="16">Grossa</button></div><input type="color" id="aOutCol" value="#ffffff" aria-label="Cor da borda"></div>
+    <label for="aZoom">Tamanho</label><input type="range" id="aZoom" min="40" max="200" value="100">
+    <label for="aRot">Girar</label><input type="range" id="aRot" min="-180" max="180" value="0">
     <label for="aTxt">Texto (opcional)</label><input type="text" id="aTxt" placeholder="Ex.: Bom dia, grupo!" maxlength="40">
   </div>
   <button id="aMake" class="pink big" disabled>Gerar figurinha com áudio</button>
@@ -435,16 +442,35 @@ const A={frames:null,dur:0,bg:'#ffffff',fx:'pula',audio:null,video:null,busy:fal
 let actx=null;const ac=()=>actx||(actx=new (window.AudioContext||window.webkitAudioContext)());
 const aCheck=()=>{$('#aMake').disabled=!(A.frames&&A.audio)||A.busy;if(window.roboCheck)window.roboCheck()};
 function aFrameAt(t){if(A.isVideo)return A.vid;let x=t%A.dur;for(const f of A.frames){if(x<f.ms)return f.img;x-=f.ms}return A.frames[0].img}
-function aDraw(t,g=acx,bg=true){
-  if(bg){g.fillStyle=A.bg;g.fillRect(0,0,512,512)}else g.clearRect(0,0,512,512);if(!A.frames)return;
+Object.assign(A,{bg:'transparent',shape:'livre',out:8,outCol:'#ffffff',zoom:1,rot:0,mode:'preview'});
+const alay=document.createElement('canvas');alay.width=alay.height=512;const alx=alay.getContext('2d');
+const asil=document.createElement('canvas');asil.width=asil.height=512;const asx=asil.getContext('2d');
+function aShapePath(g,pad){g.beginPath();if(A.shape==='circulo')g.arc(256,256,256-pad,0,Math.PI*2);else g.roundRect(pad,pad,512-pad*2,512-pad*2,A.shape==='arred'?90:0)}
+// mode: 'preview' (tela), 'video' (vídeo MP4: sem transparência) ou 'sticker' (figurinha: aceita transparência)
+function aDraw(t,g=acx,mode=A.mode){
+  const fill=A.bg==='transparent'?(mode==='video'?'#ffffff':null):A.bg;
+  if(fill){g.fillStyle=fill;g.fillRect(0,0,512,512)}else g.clearRect(0,0,512,512);
+  if(!A.frames)return;
   const im=aFrameAt(t),w=im.videoWidth||im.displayWidth||im.width,h=im.videoHeight||im.displayHeight||im.height;if(!w||!h)return;
-  const box=bg?440:500,k=Math.min(box/w,box/h);const acx=g;
-  let dx=0,dy=0,r=0,s=1;const sec=t/1000;
-  if(A.fx==='pula')dy=20-Math.abs(Math.sin(sec*Math.PI*1.6))*50;
-  if(A.fx==='pulsa')s=1+Math.sin(sec*Math.PI*3)*0.08;
-  if(A.fx==='treme'){dx=Math.sin(t/23)*7;dy=Math.cos(t/31)*5;r=Math.sin(t/41)*0.05}
-  acx.save();acx.translate(256+dx,256+dy);acx.rotate(r);acx.scale(s,s);acx.drawImage(im,-w*k/2,-h*k/2,w*k,h*k);acx.restore();
-  drawCaption(acx,$('#aTxt').value.trim(),512,512,'bot','#ffffff');
+  let dx=0,dy=0,r=A.rot*Math.PI/180,s=A.zoom;const sec=t/1000;
+  if(A.fx==='pula')dy=16-Math.abs(Math.sin(sec*Math.PI*1.6))*40;
+  if(A.fx==='pulsa')s*=1+Math.sin(sec*Math.PI*3)*0.08;
+  if(A.fx==='treme'){dx=Math.sin(t/23)*7;dy=Math.cos(t/31)*5;r+=Math.sin(t/41)*0.05}
+  const pad=A.out?A.out+3:2,shaped=A.shape!=='livre';
+  const move=c=>{c.translate(256+dx,256+dy);c.rotate(r);c.scale(s,s);c.translate(-256,-256)};
+  // imagem (recortada no formato escolhido)
+  alx.clearRect(0,0,512,512);alx.save();move(alx);
+  let k;if(shaped){aShapePath(alx,pad);alx.clip();k=Math.max((512-pad*2)/w,(512-pad*2)/h)}else k=Math.min((512-pad*2-24)/w,(512-pad*2-24)/h);
+  alx.drawImage(im,256-w*k/2,256-h*k/2,w*k,h*k);alx.restore();
+  // borda
+  if(A.out){
+    if(shaped){g.save();move(g);aShapePath(g,pad);g.fillStyle=A.outCol;g.fill();g.restore();
+      alx.save();alx.globalCompositeOperation='destination-in';move(alx);aShapePath(alx,pad+A.out);alx.fill();alx.restore()}
+    else{asx.globalCompositeOperation='source-over';asx.clearRect(0,0,512,512);asx.drawImage(alay,0,0);asx.globalCompositeOperation='source-in';asx.fillStyle=A.outCol;asx.fillRect(0,0,512,512);
+      for(let a=0;a<16;a++){const q=a/16*Math.PI*2;g.drawImage(asil,Math.cos(q)*A.out,Math.sin(q)*A.out)}}
+  }
+  g.drawImage(alay,0,0);
+  drawCaption(g,$('#aTxt').value.trim(),512,512,'bot','#ffffff');
 }
 const aLoop=ts=>{
   if(!A.busy&&A.frames&&$('#t-audio').classList.contains('on')){
@@ -466,10 +492,25 @@ async function aSetImage(blob){
   try{A.isVideo=false;A.vid.pause();const fr=await sourceFrames(blob);if(A.frames)A.frames.forEach(f=>f.img.close&&f.img.close());A.frames=fr;A.dur=fr.reduce((s,f)=>s+f.ms,0)||1000;$('#emptyA').style.display='none';aCheck()}
   catch(e){toast('Não consegui abrir essa imagem.')}
 }
-async function aSetAudio(blob,label){
+// corta o som em até maxSec e devolve um WAV (o WAV guarda a duração certa; o WebM da gravação não guarda)
+function trimBuffer(buf,maxSec){
+  const n=Math.min(buf.length,Math.round(maxSec*buf.sampleRate));if(n===buf.length)return buf;
+  const out=ac().createBuffer(buf.numberOfChannels,n,buf.sampleRate);
+  for(let c=0;c<buf.numberOfChannels;c++)out.copyToChannel(buf.getChannelData(c).subarray(0,n),c);return out;
+}
+function toWav(buf){
+  const ch=buf.numberOfChannels,n=buf.length,sr=buf.sampleRate,ab=new ArrayBuffer(44+n*ch*2),v=new DataView(ab);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  w(0,'RIFF');v.setUint32(4,36+n*ch*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,ch,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*ch*2,true);v.setUint16(32,ch*2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*ch*2,true);
+  const data=[];for(let c=0;c<ch;c++)data.push(buf.getChannelData(c));
+  let o=44;for(let i=0;i<n;i++)for(let c=0;c<ch;c++){const s=Math.max(-1,Math.min(1,data[c][i]));v.setInt16(o,s<0?s*0x8000:s*0x7fff,true);o+=2}
+  return new Blob([ab],{type:'audio/wav'});
+}
+async function aSetAudio(blob,label,maxSec=600){
   try{
-    const buf=await ac().decodeAudioData(await blob.arrayBuffer());A.audio=buf;
-    const p=$('#aPlayer');if(p.src)URL.revokeObjectURL(p.src);p.src=URL.createObjectURL(blob);p.style.display='block';
+    const buf=trimBuffer(await ac().decodeAudioData(await blob.arrayBuffer()),maxSec);A.audio=buf;
+    const p=$('#aPlayer');if(p.src)URL.revokeObjectURL(p.src);p.src=URL.createObjectURL(buf.duration<=120?toWav(buf):blob);p.style.display='block';
     const d=buf.duration;$('#aInfo').textContent=`${label}: ${fmt(d)} s de som.`;
     $('#aStart').max=Math.max(0,d-0.5).toFixed(1);$('#aStart').value=0;$('#lAStart').textContent='0,0';
     const mx=Math.min(10,Math.max(1,Math.ceil(d*2)/2));$('#aLen').max=mx;$('#aLen').value=Math.min(mx,Math.max(1,Math.ceil(d*2)/2));$('#lALen').textContent=fmt(+$('#aLen').value).replace(',0','');
@@ -482,16 +523,23 @@ $('#aVidFile').onchange=e=>{const f=e.target.files[0];if(f){toast('Tirando o som
 $('#aStart').oninput=e=>$('#lAStart').textContent=fmt(+e.target.value);
 $('#aLen').oninput=e=>$('#lALen').textContent=fmt(+e.target.value).replace(',0','');
 chips('#cFx',v=>A.fx=v);chips('#cABg',v=>A.bg=v);
+$('#aBgCol').oninput=e=>{A.bg=e.target.value;$$('#cABg button').forEach(b=>b.classList.remove('sel'))};
+chips('#cAShape',v=>A.shape=v);chips('#cAOut',v=>A.out=+v);
+$('#aOutCol').oninput=e=>{A.outCol=e.target.value;if(!A.out){A.out=8;$$('#cAOut button').forEach(b=>b.classList.toggle('sel',b.dataset.v==='8'))}};
+$('#aZoom').oninput=e=>A.zoom=e.target.value/100;$('#aRot').oninput=e=>A.rot=+e.target.value;
 $('#aFromGal').onclick=()=>openPicker();
 // gravar voz pelo microfone (até 10 s)
-let rec=null,recLim=0;
+let rec=null,recLim=0,recTick=0;
 $('#aRec').onclick=async()=>{
   const btn=$('#aRec');if(rec){rec.stop();return}
   try{
     const st=await navigator.mediaDevices.getUserMedia({audio:true});const chunks=[];
     rec=new MediaRecorder(st);rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
-    rec.onstop=()=>{const type=rec.mimeType||'audio/webm';st.getTracks().forEach(t=>t.stop());clearTimeout(recLim);rec=null;btn.textContent='● Gravar de novo';btn.classList.remove('rec');aSetAudio(new Blob(chunks,{type}),'Sua gravação')};
-    rec.start();recLim=setTimeout(()=>rec&&rec.stop(),10000);btn.textContent='■ Parar gravação';btn.classList.add('rec');toast('Gravando… fale agora (até 10 s)',3000);
+    rec.onstop=()=>{const type=rec.mimeType||'audio/webm';st.getTracks().forEach(t=>t.stop());clearTimeout(recLim);clearInterval(recTick);rec=null;btn.textContent='● Gravar de novo';btn.classList.remove('rec');aSetAudio(new Blob(chunks,{type}),'Sua gravação',10)};
+    const t0=Date.now();
+    rec.start(250);recLim=setTimeout(()=>rec&&rec.stop(),10000);btn.classList.add('rec');
+    const tick=()=>{btn.textContent=`■ Parar (${Math.min(10,Math.floor((Date.now()-t0)/1000))}/10 s)`};tick();recTick=setInterval(tick,250);
+    toast('Gravando… fale agora (até 10 s)',3000);
   }catch(e){console.error(e);rec=null;toast('Não consegui usar o microfone. Permita o acesso ao microfone e tente de novo.',4500)}
 };
 function videoMime(){if(!window.MediaRecorder)return null;for(const m of ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1,mp4a.40.2','video/mp4','video/webm;codecs=vp8,opus','video/webm'])if(MediaRecorder.isTypeSupported(m))return m;return ''}
@@ -503,15 +551,17 @@ $('#aMake').onclick=async()=>{
     const ctx=ac();await ctx.resume();
     const dest=ctx.createMediaStreamDestination(),src=ctx.createBufferSource();src.buffer=A.audio;src.connect(dest);src.connect(ctx.destination);
     if(A.isVideo){await aSeek(start);A.vid.play().catch(()=>{})}
-    const vs=acv.captureStream(30);aDraw(0);
+    const vs=acv.captureStream(30);aDraw(0,acx,'video');
     const stream=new MediaStream([...vs.getVideoTracks(),...dest.stream.getAudioTracks()]);
     const mr=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:1500000,audioBitsPerSecond:128000}:undefined);
     const chunks=[];mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);const stopped=new Promise(r=>mr.onstop=r);
     mr.start(250);const t0=performance.now();src.start(0,start,len);
-    await new Promise(res=>{const tick=()=>{const t=performance.now()-t0;aDraw(t);const p=Math.min(100,Math.round(t/(len*1000)*100));bar.firstChild.style.width=p+'%';btn.textContent=`Gerando… ${p}%`;if(t>=len*1000+200)return res();requestAnimationFrame(tick)};tick()});
+    await new Promise(res=>{const tick=()=>{const t=performance.now()-t0;aDraw(t,acx,'video');const p=Math.min(100,Math.round(t/(len*1000)*100));bar.firstChild.style.width=p+'%';btn.textContent=`Gerando… ${p}%`;if(t>=len*1000+200)return res();requestAnimationFrame(tick)};tick()});
     mr.stop();await stopped;vs.getTracks().forEach(t=>t.stop());try{src.stop()}catch(e){}
     const type=(mr.mimeType||mime||'video/webm').split(';')[0];A.video=new Blob(chunks,{type});
-    const o=$('#aOut');if(o.src)URL.revokeObjectURL(o.src);o.src=URL.createObjectURL(A.video);o.style.display='block';
+    const o=$('#aOut');if(o.src)URL.revokeObjectURL(o.src);
+    o.onloadedmetadata=()=>{if(o.duration===Infinity||isNaN(o.duration)){o.ontimeupdate=()=>{o.ontimeupdate=null;o.currentTime=0};o.currentTime=1e7}}; // vídeo WebM sem duração: força o cálculo
+    o.src=URL.createObjectURL(A.video);o.style.display='block';
     $('#aSave').disabled=$('#aShare').disabled=false;
     toast(type.includes('mp4')?`Pronto! (${Math.round(A.video.size/1024)} KB)`:'Pronto! Se o WhatsApp não aceitar o vídeo, atualize o "Android System WebView" na Play Store.',4500);
     o.scrollIntoView({behavior:'smooth',block:'center'});
@@ -527,7 +577,7 @@ const scv=document.createElement('canvas');scv.width=scv.height=512;const scx=sc
 async function makeSoundWebp(start,len,onp){
   for(const fps of [10,8,6,4]){
     const n=Math.max(2,Math.round(len*fps)),shots=[];
-    for(let i=0;i<n;i++){const t=i*1000/fps;if(A.isVideo)await aSeek(start+t/1000);aDraw(t,scx,false);shots.push(await createImageBitmap(scv));onp&&onp(i/n*0.5)}
+    for(let i=0;i<n;i++){const t=i*1000/fps;if(A.isVideo)await aSeek(start+t/1000);aDraw(t,scx,'sticker');shots.push(await createImageBitmap(scv));onp&&onp(i/n*0.5)}
     for(const q of [0.75,0.55,0.4,0.28]){
       const frames=[];
       for(const b of shots){scx.clearRect(0,0,512,512);scx.drawImage(b,0,0);frames.push({u8:new Uint8Array(await (await canvasBlob(scv,'image/webp',q)).arrayBuffer()),ms:1000/fps})}

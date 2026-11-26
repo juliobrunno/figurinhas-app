@@ -37,15 +37,37 @@ public class NodeRunner {
                 File data = new File(app.getFilesDir(), "robo-dados");
                 data.mkdirs();
                 Log.i(TAG, "ligando o robô");
+                writeLog(app, "ligando o robô (Android " + android.os.Build.VERSION.RELEASE + ", " + android.os.Build.SUPPORTED_ABIS[0] + ")");
                 int code = startNodeWithArguments(new String[]{"node", new File(dir, "main.mjs").getAbsolutePath(), data.getAbsolutePath()});
                 problem = "O robô parou (código " + code + ").";
                 Log.e(TAG, problem);
+                writeLog(app, problem);
             } catch (Throwable e) {
                 problem = "Não consegui ligar o robô: " + e;
                 Log.e(TAG, problem, e);
+                writeLog(app, problem);
             }
         }, "robo-node", 16 * 1024 * 1024);
         t.start();
+    }
+
+    /** Registro do robô: filesDir/robo-dados/robo-log.txt (o main.mjs escreve no mesmo arquivo). */
+    public static File logFile(Context ctx) {
+        File d = new File(ctx.getFilesDir(), "robo-dados");
+        d.mkdirs();
+        return new File(d, "robo-log.txt");
+    }
+
+    static void writeLog(Context ctx, String msg) {
+        try (FileOutputStream o = new FileOutputStream(logFile(ctx), true)) {
+            o.write(("[" + new java.util.Date() + "] [android] " + msg + "\n").getBytes("UTF-8"));
+        } catch (Exception ignored) { }
+    }
+
+    /** Últimas linhas do registro, para mostrar na tela quando o robô não responde. */
+    public static String tailLog(Context ctx, int max) {
+        String t = readText(logFile(ctx));
+        return t.length() > max ? t.substring(t.length() - max) : t;
     }
 
     private static String readText(File f) {

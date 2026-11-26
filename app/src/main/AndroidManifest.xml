@@ -22,6 +22,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- O robô (Node.js) roda em processo separado: se ele cair, o app não fecha -->
+        <service android:name=".RoboService" android:process=":robo" android:exported="false" />
         <provider
             android:name=".StickerProvider"
             android:authorities="${applicationId}.stickercontentprovider"

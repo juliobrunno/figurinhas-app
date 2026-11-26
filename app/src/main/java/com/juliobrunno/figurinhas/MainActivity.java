@@ -49,7 +49,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         web = new WebView(this);
         setContentView(web);
-        NodeRunner.start(this);
+        startRobo();
 
         final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
                 .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
@@ -115,6 +115,14 @@ public class MainActivity extends Activity {
             web.loadUrl("https://appassets.androidplatform.net/assets/www/index.html");
         } else {
             web.restoreState(savedInstanceState);
+        }
+    }
+
+    private void startRobo() {
+        try {
+            startService(new Intent(this, RoboService.class));
+        } catch (Exception e) {
+            NodeRunner.writeLog(this, "não consegui iniciar o serviço do robô: " + e);
         }
     }
 
@@ -259,7 +267,9 @@ public class MainActivity extends Activity {
                     text = bo.toString("UTF-8");
                 } catch (Exception e) {
                     code = 0;
-                    String why = NodeRunner.problem != null ? NodeRunner.problem : "O robô ainda está ligando. Espere alguns segundos e tente de novo.";
+                    startRobo(); // se o robô tinha parado, liga de novo (ele roda em outro processo)
+                    String log = NodeRunner.tailLog(MainActivity.this, 600).trim();
+                    String why = "O robô ainda está ligando. Espere alguns segundos e tente de novo." + (log.isEmpty() ? "" : "\n\nRegistro do robô:\n" + log);
                     try { text = new JSONObject().put("error", why).toString(); } catch (Exception x) { text = "{}"; }
                 }
                 final String js = "window.onRobo&&window.onRobo(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(text) + ")";

@@ -191,7 +191,7 @@ a{color:var(--pink);font-weight:700}
     <b style="font:800 20px/1.1 'Baloo 2',sans-serif">Figurinha com som de verdade</b>
     <p class="hint" style="margin-top:4px">O robô do app manda a figurinha com som para a sua conversa <b>"Você"</b> no WhatsApp. Lá, toque nela e escolha <b>Favoritar</b>. Depois é só usar em qualquer conversa.</p>
     <p class="hint">Atenção: o robô usa um jeito <b>não oficial</b> de falar com o WhatsApp. Uso pessoal, por sua conta e risco (o WhatsApp pode bloquear o número).</p>
-    <p id="roboSt" style="font-weight:800;margin:10px 0 0">Verificando o robô…</p>
+    <p id="roboSt" style="font-weight:800;margin:10px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">Verificando o robô…</p>
     <div id="roboPair" style="display:none">
       <label for="roboTel">Seu número do WhatsApp (com 55 e DDD)</label>
       <div class="row"><input type="text" id="roboTel" inputmode="tel" autocomplete="tel" placeholder="Ex.: 5511999998888" style="flex:1 1 180px"><button id="roboGo" class="pri" style="flex:0 0 auto">Pegar código</button></div>
@@ -634,7 +634,7 @@ function robo(method,path,body){
 const R={state:null};
 function roboShow(st){
   R.state=st.state;const t=$('#roboSt');
-  const map={desconectado:'⚪ Robô desligado do WhatsApp. Digite seu número para conectar.',conectando:'🟡 Conectando ao WhatsApp…',aguardando_codigo:'🟡 Digite o código abaixo no seu WhatsApp.',conectado:'🟢 Robô conectado'+(st.me?' ao número '+st.me.split('@')[0].split(':')[0]:'')+'.'};
+  const map={erro:'🔴 O robô deu erro. Tire uma foto desta tela.',desconectado:'⚪ Robô desligado do WhatsApp. Digite seu número para conectar.',conectando:'🟡 Conectando ao WhatsApp…',aguardando_codigo:'🟡 Digite o código abaixo no seu WhatsApp.',conectado:'🟢 Robô conectado'+(st.me?' ao número '+st.me.split('@')[0].split(':')[0]:'')+'.'};
   t.textContent=(map[st.state]||st.state)+(st.error?' — '+st.error:'');
   $('#roboPair').style.display=st.state==='desconectado'?'block':'none';
   $('#roboCode').style.display=st.state==='aguardando_codigo'&&st.code?'block':'none';
